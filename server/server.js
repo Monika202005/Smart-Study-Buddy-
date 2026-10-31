@@ -65,12 +65,40 @@ app.use('/api/quiz', quizRoutes);
 
 // Member B Stub: Auth API
 app.post('/api/auth/login', (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
+  }
   res.json({
     success: true,
     token: 'mock_jwt_token_studybuddy_monika',
-    user: mockUser,
+    user: {
+      ...mockUser,
+      email: email || mockUser.email,
+    },
   });
 });
+
+app.post('/api/auth/register', (req, res) => {
+  const { name, email, password, dailyHours } = req.body;
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: 'Name, email, and password are required.' });
+  }
+  const newUser = {
+    _id: `user_${Date.now()}`,
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
+    dailyHours: Number(dailyHours) || 4,
+    theme: 'dark',
+    streak: 1,
+  };
+  res.status(201).json({
+    success: true,
+    token: `jwt_token_${Date.now()}`,
+    user: newUser,
+  });
+});
+
 app.get('/api/auth/me', (req, res) => {
   res.json({ success: true, user: mockUser });
 });

@@ -9,11 +9,16 @@ import SubjectsPage from './pages/SubjectsPage';
 import TimerPage from './pages/TimerPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
+import LoginPage from './pages/LoginPage';
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Dedicated Auth Page */}
+        <Route path="/login" element={<LoginPage />} />
+
+        {/* Main Application Shell */}
         <Route path="/" element={<AppShell />}>
           <Route index element={<DashboardPage />} />
           <Route path="chat" element={<ChatPage />} />

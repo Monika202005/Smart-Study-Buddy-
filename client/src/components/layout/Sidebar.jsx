@@ -12,6 +12,7 @@ import {
   Sparkles,
   ChevronRight,
   Flame,
+  LogIn,
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 
@@ -74,6 +75,13 @@ export default function Sidebar({ mobileOpen, onClose }) {
       to: '/settings',
       label: 'Settings & Profile',
       icon: Settings,
+    },
+    {
+      to: '/login',
+      label: 'Login / Sign Up',
+      icon: LogIn,
+      badge: 'Auth',
+      badgeColor: 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/20',
     },
   ];
 

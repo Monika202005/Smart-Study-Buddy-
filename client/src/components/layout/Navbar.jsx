@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { Sparkles, Flame, Clock, Bot, Bell, ShieldCheck, Menu } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Sparkles, Flame, Clock, Bot, Bell, ShieldCheck, Menu, LogIn, LogOut } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 
 export default function Navbar({ onMobileMenuToggle }) {
-  const { user, toggleFloatingChat } = useStore();
+  const navigate = useNavigate();
+  const { user, logout, toggleFloatingChat } = useStore();
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-30 h-16 border-b border-slate-800/80 bg-slate-900/80 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between">
@@ -101,15 +104,51 @@ export default function Navbar({ onMobileMenuToggle }) {
           )}
         </div>
 
-        {/* User Profile Pill */}
-        <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs ring-2 ring-indigo-500/30">
-            MS
-          </div>
-          <div className="hidden xl:block text-left">
-            <p className="text-xs font-semibold text-slate-200 leading-tight">{user.name}</p>
-            <p className="text-[10px] text-indigo-400 font-medium leading-tight">Member 1 (Lead)</p>
-          </div>
+        {/* User Profile Pill & Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setUserMenuOpen(!userMenuOpen)}
+            className="flex items-center gap-2 pl-2 border-l border-slate-800 hover:opacity-80 transition-opacity"
+            title="Account Menu"
+          >
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs ring-2 ring-indigo-500/30">
+              {user.name?.split(' ').map(n => n[0]).join('') || 'MS'}
+            </div>
+            <div className="hidden xl:block text-left">
+              <p className="text-xs font-semibold text-slate-200 leading-tight">{user.name}</p>
+              <p className="text-[10px] text-indigo-400 font-medium leading-tight">Member 1 (Lead)</p>
+            </div>
+          </button>
+
+          {userMenuOpen && (
+            <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl p-2.5 z-50 text-xs animate-in fade-in duration-150">
+              <div className="px-3 py-2 border-b border-slate-800/80 mb-1.5">
+                <p className="font-bold text-white text-xs">{user.name}</p>
+                <p className="text-[11px] text-slate-400 truncate">{user.email}</p>
+              </div>
+
+              <Link
+                to="/login"
+                onClick={() => setUserMenuOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors"
+              >
+                <LogIn className="w-4 h-4 text-indigo-400" />
+                <span>Switch / Login Page</span>
+              </Link>
+
+              <button
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  logout();
+                  navigate('/login');
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-rose-300 hover:text-rose-200 hover:bg-rose-500/10 transition-colors"
+              >
+                <LogOut className="w-4 h-4 text-rose-400" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>

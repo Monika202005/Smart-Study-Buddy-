@@ -89,6 +89,36 @@ export async function fetchWeakTopicsApi() {
 }
 
 // ==========================================
+// AUTHENTICATION APIS (Member B & C)
+// ==========================================
+
+export async function loginUserApi(email, password) {
+  const res = await fetch(`${BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Login failed. Please check your credentials.');
+  }
+  return await res.json();
+}
+
+export async function registerUserApi(userData) {
+  const res = await fetch(`${BASE_URL}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(userData),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Registration failed. Please try again.');
+  }
+  return await res.json();
+}
+
+// ==========================================
 // TEAMMATES INTEGRATION STUB APIS
 // ==========================================
 

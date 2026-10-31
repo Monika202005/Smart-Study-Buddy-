@@ -7,17 +7,79 @@ import {
   generateQuizApi,
   recordQuizResultApi,
   fetchWeakTopicsApi,
+  loginUserApi,
+  registerUserApi,
 } from '../services/api.js';
 
+const initialToken = localStorage.getItem('studybuddy_token');
+const initialUser = localStorage.getItem('studybuddy_user')
+  ? JSON.parse(localStorage.getItem('studybuddy_user'))
+  : {
+      id: 'default_student_1',
+      name: 'Monika Sharma',
+      email: 'monika@studybuddy.dev',
+      dailyHours: 4,
+      streak: 4,
+      role: 'Lead (Member 1)',
+    };
+
 export const useStore = create((set, get) => ({
-  // User state
-  user: {
-    id: 'default_student_1',
-    name: 'Monika Sharma',
-    email: 'monika@studybuddy.dev',
-    dailyHours: 4,
-    streak: 4,
-    role: 'Lead (Member 1)',
+  // Auth state
+  isAuthenticated: Boolean(initialToken) || true, // default active for seamless dev, fully toggleable
+  token: initialToken || 'mock_jwt_token_studybuddy_monika',
+  user: initialUser,
+  authError: null,
+  isAuthLoading: false,
+
+  login: async (email, password) => {
+    try {
+      set({ isAuthLoading: true, authError: null });
+      const data = await loginUserApi(email, password);
+      if (data.success) {
+        localStorage.setItem('studybuddy_token', data.token);
+        localStorage.setItem('studybuddy_user', JSON.stringify(data.user));
+        set({
+          isAuthenticated: true,
+          token: data.token,
+          user: data.user,
+          isAuthLoading: false,
+        });
+        return data;
+      }
+    } catch (err) {
+      set({ isAuthLoading: false, authError: err.message });
+      throw err;
+    }
+  },
+
+  register: async (name, email, password, dailyHours) => {
+    try {
+      set({ isAuthLoading: true, authError: null });
+      const data = await registerUserApi({ name, email, password, dailyHours });
+      if (data.success) {
+        localStorage.setItem('studybuddy_token', data.token);
+        localStorage.setItem('studybuddy_user', JSON.stringify(data.user));
+        set({
+          isAuthenticated: true,
+          token: data.token,
+          user: data.user,
+          isAuthLoading: false,
+        });
+        return data;
+      }
+    } catch (err) {
+      set({ isAuthLoading: false, authError: err.message });
+      throw err;
+    }
+  },
+
+  logout: () => {
+    localStorage.removeItem('studybuddy_token');
+    localStorage.removeItem('studybuddy_user');
+    set({
+      isAuthenticated: false,
+      token: null,
+    });
   },
 
   // Chatbot State (Member 1)
