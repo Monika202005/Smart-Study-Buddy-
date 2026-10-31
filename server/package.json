@@ -6,14 +6,21 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js",
-    "test:llm": "node scripts/test-llm.js"
+    "dev": "node --watch --watch-path=server.js --watch-path=config --watch-path=controllers --watch-path=models --watch-path=routes --watch-path=services --watch-path=jobs server.js",
+    "test:llm": "node scripts/test-llm.js",
+    "test:scheduler": "node --test tests/scheduler.test.js",
+    "test:api": "node scripts/test-member-b.js"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
-    "mongoose": "^8.9.5"
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.9.5",
+    "node-cron": "^4.6.0",
+    "nodemailer": "^10.3.1"
   }
 }
