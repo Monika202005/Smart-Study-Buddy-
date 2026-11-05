@@ -18,16 +18,19 @@ jobs:
       with:
         node-version: 20.x
 
-    - name: Install Root & Client & Server Dependencies
+    - name: Install Dependencies
       run: |
         npm install
-        cd client && npm install
-        cd ../server && npm install
+        npm run install:all
+
+    - name: Lint Frontend
+      run: |
+        cd client && npm run lint
 
     - name: Build Frontend
       run: |
-        cd client && npm run build
+        npm run build
 
-    - name: Test LLM Script Syntax
+    - name: Run Server Test Suite
       run: |
-        cd server && node --check server.js
+        cd server && npm test
