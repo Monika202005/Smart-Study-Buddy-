@@ -234,23 +234,18 @@ function simulatedModelTurn({ userMessage, plannerContext, iteration = 0, previo
   }
 
   // 5. Concept Explanations (Academic queries)
+  // B+ Tree / DBMS indexing (checked before general tree)
+  if (norm.includes('b+ tree') || norm.includes('b tree') || norm.includes('index') || norm.includes('dbms')) {
+    return {
+      text: `### 📚 B+ Trees in Modern Database Indexing\n\nImagine searching for a chapter in a massive encyclopedia. Instead of flipping every single page ($O(n)$ full table scan), an **index** acts as the quick-reference index in the back.\n\n**Why Databases love B+ Trees over standard Binary Trees:**\n1. **High Fanout:** Nodes hold hundreds of keys, keeping the tree very shallow (typically height 3–4 even for millions of rows), minimizing expensive disk seeks.\n2. **Sequential Leaf Links:** Unlike B-trees, all actual data pointers in a B+ tree reside exclusively in the leaf nodes, which are doubly-linked. This makes **range queries** (e.g. \`WHERE age BETWEEN 20 AND 30\`) blazing fast with simple horizontal scans.\n\n---\n**🧠 Quick Check:**\nIn a B+ Tree, where are the satellite data records/pointers actually stored?\nA) In root node only\nB) In internal routing nodes only\nC) Strictly in leaf nodes\nD) Uniformly across all levels`,
+      functionCall: null,
+    };
+  }
+
+  // Trees / BST / AVL
   if (norm.includes('tree') || norm.includes('bst') || norm.includes('avl')) {
     return {
       text: `### 🌳 Binary Search Trees (BST) vs AVL Trees\n\nThink of a **Binary Search Tree** like a dictionary where for every page (node), words smaller are to the left, and words larger are to the right.\n\n- **The Problem:** If you insert sorted elements ($1, 2, 3, 4$), a basic BST degrades into a linear chain with $O(n)$ search time.\n- **The Solution (AVL Tree):** An AVL tree is a **self-balancing BST**. It checks the balance factor $\\text{Balance} = \\text{Height}(\\text{left}) - \\text{Height}(\\text{right})$ at every node. If the difference is outside $\\{-1, 0, +1\\}$, it performs **tree rotations** (Left, Right, Left-Right, Right-Left) to maintain $O(\\log n)$ height.\n\n---\n**🧠 Quick Quiz for You:**\nWhat is the maximum balance factor allowed in a valid AVL node?\nA) 0\nB) 1 (i.e. -1, 0, or +1)\nC) 2\nD) Depends on tree depth\n\n*(Reply with your choice!)*`,
-      functionCall: null,
-    };
-  }
-
-  if (norm.includes('stack') || norm.includes('queue')) {
-    return {
-      text: `### 🥞 Stack vs 🚶 Queue\n\n- **Stack (LIFO - Last In, First Out):** Like a stack of dinner plates or a browser's "Back" history. The last plate placed on top is the first one taken off.\n  - Key ops: \`push()\` and \`pop()\` both in $O(1)$.\n- **Queue (FIFO - First In, First Out):** Like people queueing up at a movie ticket counter. The first person to arrive is served first.\n  - Key ops: \`enqueue()\` (at rear) and \`dequeue()\` (from front) both in $O(1)$.\n\n---\n**🧠 Quick Check:**\nWhich data structure is primarily used in **Breadth-First Search (BFS)** traversal of a graph?\nA) Stack\nB) Queue\nC) Priority Queue only\nD) Hash Map`,
-      functionCall: null,
-    };
-  }
-
-  if (norm.includes('index') || norm.includes('b+ tree') || norm.includes('b tree') || norm.includes('dbms')) {
-    return {
-      text: `### 📚 B+ Trees in Modern Database Indexing\n\nImagine searching for a chapter in a massive encyclopedia. Instead of flipping every single page ($O(n)$ full table scan), an **index** acts as the quick-reference index in the back.\n\n**Why Databases love B+ Trees over standard Binary Trees:**\n1. **High Fanout:** Nodes hold hundreds of keys, keeping the tree very shallow (typically height 3–4 even for millions of rows), minimizing expensive disk seeks.\n2. **Sequential Leaf Links:** Unlike B-trees, all actual data pointers in a B+ tree reside exclusively in the leaf nodes, which are doubly-linked. This makes **range queries** (e.g. \`WHERE age BETWEEN 20 AND 30\`) blazing fast with simple horizontal scans.\n\n---\n**🧠 Quick Check:**\nIn a B+ Tree, where are the satellite data records/pointers actually stored?\nA) In root node only\nB) In internal routing nodes only\nC) Strictly in leaf nodes\nD) Uniformly across all levels`,
       functionCall: null,
     };
   }
