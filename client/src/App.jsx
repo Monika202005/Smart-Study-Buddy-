@@ -10,11 +10,15 @@ import TimerPage from './pages/TimerPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
 import LoginPage from './pages/LoginPage';
+import LandingPage from './pages/LandingPage';
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Member C — Public Landing Page */}
+        <Route path="/landing" element={<LandingPage />} />
+
         {/* Dedicated Auth Page */}
         <Route path="/login" element={<LoginPage />} />
 

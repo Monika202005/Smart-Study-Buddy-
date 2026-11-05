@@ -5,6 +5,14 @@
 
 const BASE_URL = '/api';
 
+function getAuthHeaders() {
+  const token = localStorage.getItem('studybuddy_token') || 'mock_jwt_token_studybuddy_monika';
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+  };
+}
+
 export async function checkServerHealth() {
   try {
     const res = await fetch(`${BASE_URL}/health`);
@@ -119,33 +127,135 @@ export async function registerUserApi(userData) {
 }
 
 // ==========================================
-// TEAMMATES INTEGRATION STUB APIS
+// MEMBER C: Planner & Tasks APIs
 // ==========================================
 
-export async function fetchSubjectsApi() {
-  const res = await fetch(`${BASE_URL}/subjects`);
+export async function fetchTasksApi(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  const res = await fetch(`${BASE_URL}/tasks${query ? `?${query}` : ''}`, {
+    headers: getAuthHeaders(),
+  });
   return await res.json();
 }
 
-export async function fetchTasksApi() {
-  const res = await fetch(`${BASE_URL}/tasks`);
+export async function createTaskApi(taskData) {
+  const res = await fetch(`${BASE_URL}/tasks`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(taskData),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to create task');
+  }
   return await res.json();
 }
 
 export async function toggleTaskCompleteApi(taskId) {
-  const res = await fetch(`${BASE_URL}/tasks/${taskId}/complete`, { method: 'PATCH' });
+  const res = await fetch(`${BASE_URL}/tasks/${taskId}/complete`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+  });
+  return await res.json();
+}
+
+export async function rescheduleTaskApi(taskId, scheduledDate) {
+  const res = await fetch(`${BASE_URL}/tasks/${taskId}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ scheduledDate }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to reschedule task');
+  }
   return await res.json();
 }
 
 export async function triggerGeneratePlanApi() {
-  const res = await fetch(`${BASE_URL}/planner/generate`, { method: 'POST' });
+  const res = await fetch(`${BASE_URL}/planner/generate`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
   return await res.json();
 }
 
 export async function triggerRescheduleMissedApi() {
-  const res = await fetch(`${BASE_URL}/planner/reschedule-missed`, { method: 'POST' });
+  const res = await fetch(`${BASE_URL}/planner/reschedule-missed`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
   return await res.json();
 }
+
+// ==========================================
+// MEMBER C: Subjects & Topics APIs
+// ==========================================
+
+export async function fetchSubjectsApi() {
+  const res = await fetch(`${BASE_URL}/subjects`, {
+    headers: getAuthHeaders(),
+  });
+  return await res.json();
+}
+
+export async function createSubjectApi(data) {
+  const res = await fetch(`${BASE_URL}/subjects`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to create subject');
+  }
+  return await res.json();
+}
+
+export async function deleteSubjectApi(subjectId) {
+  const res = await fetch(`${BASE_URL}/subjects/${subjectId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to delete subject');
+  return await res.json();
+}
+
+export async function createTopicApi(subjectId, data) {
+  const res = await fetch(`${BASE_URL}/subjects/${subjectId}/topics`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to create topic');
+  }
+  return await res.json();
+}
+
+export async function updateTopicStatusApi(topicId, status) {
+  const res = await fetch(`${BASE_URL}/topics/${topicId}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error('Failed to update topic status');
+  return await res.json();
+}
+
+export async function deleteTopicApi(topicId) {
+  const res = await fetch(`${BASE_URL}/topics/${topicId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to delete topic');
+  return await res.json();
+}
+
+// ==========================================
+// ANALYTICS (Member D)
+// ==========================================
 
 export async function fetchAnalyticsSummaryApi() {
   const res = await fetch(`${BASE_URL}/analytics/summary`);

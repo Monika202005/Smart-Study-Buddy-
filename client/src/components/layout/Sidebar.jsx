@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Flame,
   LogIn,
+  Home,
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 
@@ -47,15 +48,17 @@ export default function Sidebar({ mobileOpen, onClose }) {
       to: '/planner',
       label: 'Smart Planner',
       icon: CalendarDays,
-      badge: 'Member C',
-      badgeColor: 'bg-slate-800 text-slate-400',
+      badge: '✅ Member C',
+      badgeColor: 'bg-sky-500/15 text-sky-300 border border-sky-500/25 font-bold',
+      highlight: true,
     },
     {
       to: '/subjects',
       label: 'Subjects & Topics',
       icon: BookOpen,
-      badge: 'Member C',
-      badgeColor: 'bg-slate-800 text-slate-400',
+      badge: '✅ Member C',
+      badgeColor: 'bg-sky-500/15 text-sky-300 border border-sky-500/25 font-bold',
+      highlight: true,
     },
     {
       to: '/timer',
@@ -82,6 +85,14 @@ export default function Sidebar({ mobileOpen, onClose }) {
       icon: LogIn,
       badge: 'Auth',
       badgeColor: 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/20',
+    },
+    {
+      to: '/landing',
+      label: 'Landing Page',
+      icon: Home,
+      badge: '✅ Member C',
+      badgeColor: 'bg-sky-500/15 text-sky-300 border border-sky-500/25 font-bold',
+      highlight: true,
     },
   ];
 

@@ -20,8 +20,8 @@
 | Member | Role | Modules Owned | Status |
 |---|---|---|---|
 | **Member 1 (Monika - Lead)** | **Team Lead + AI Chatbot** | App Shell & Routing, AI Chatbot UI & API, Planner Context Builder, 4 Tool Actions, Flashcards & Quiz Engine, Weak-Topic Detection, Repo setup & CI, Shared API Contract. | **✅ COMPLETE & TESTED** |
-| **Member 2 (Member B)** | Backend + Scheduler | Auth APIs (JWT + bcrypt), Mongoose models (User, Subject, Topic, Task, Session), Auto-schedule algorithm, Reminders (node-cron + Nodemailer). | *Contract & Stubs Ready* |
-| **Member 3 (Member C)** | Planner UI + Subjects | Landing, Login, Signup, Calendar with drag-and-drop, Subjects & Syllabus view, plan preview and reschedule modal. | *App Shell Ready* |
+| **Member 2 (Member B)** | **Backend + Scheduler** | Auth APIs (JWT + bcrypt), Mongoose models (User, Subject, Topic, Task, Session), Auto-schedule algorithm, Reminders (node-cron + Nodemailer). | **✅ COMPLETE & TESTED** |
+| **Member 3 (Member C)** | **Planner UI + Subjects** | Landing page, Login/Signup forms, Planner calendar with drag-and-drop, Subjects & Syllabus view, plan preview, reschedule modal, task CRUD. | **✅ COMPLETE & TESTED** |
 | **Member 4 (Member D)** | Dashboard + Analytics | Dashboard layout, Pomodoro focus timer, Analytics charts (Recharts), streaks, dark mode pass. | *App Shell Ready* |
 
 ---
@@ -44,8 +44,10 @@ studybuddy/
 │       ├── components/
 │       │   ├── chat/              # ChatInterface, ChatMessageItem, FloatingChatWidget, PromptSuggestions
 │       │   ├── flashcards/        # FlashcardDeck (3D flip), QuizMode, WeakTopicsBanner, GenerateQuizModal
+│       │   ├── planner/           # PlannerCalendar (drag-and-drop), TaskDetailModal (reschedule)
+│       │   ├── subjects/          # AddSubjectModal, AddTopicModal
 │       │   └── layout/            # AppShell, Navbar, Sidebar, TeammateModuleStub
-│       ├── pages/                 # DashboardPage, ChatPage, FlashcardsPage, PlannerPage, SubjectsPage, TimerPage, AnalyticsPage, SettingsPage
+│       ├── pages/                 # LandingPage, DashboardPage, ChatPage, FlashcardsPage, PlannerPage, SubjectsPage, TimerPage, AnalyticsPage, SettingsPage, LoginPage
 │       ├── services/api.js        # Frontend API client
 │       └── store/useStore.js      # Zustand centralized store
 ├── server/
@@ -61,6 +63,8 @@ studybuddy/
 │   ├── api-contract.md            # Formal API contract for teammates
 │   ├── chatbot-test-suite.md      # 18-point chatbot test matrix (Pass/Fail)
 │   ├── MEMBER_1_REPORT.md         # Final report chapters owned by Member 1
+│   ├── MEMBER_B_REPORT.md         # Final report chapters owned by Member B
+│   ├── MEMBER_C_REPORT.md         # Final report chapters owned by Member C (Planner UI & Subjects)
 │   └── team-roles.md              # Team roles and meeting schedule
 └── README.md
 ```
