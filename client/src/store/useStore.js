@@ -20,7 +20,7 @@ const initialUser = localStorage.getItem('studybuddy_user')
       email: 'monika@studybuddy.dev',
       dailyHours: 4,
       streak: 4,
-      role: 'Lead (Member 1)',
+      role: 'Student',
     };
 
 export const useStore = create((set, get) => ({

@@ -5,18 +5,9 @@ import ChatInterface from '../components/chat/ChatInterface';
 export default function ChatPage() {
   return (
     <div className="space-y-4 max-w-5xl mx-auto animate-in fade-in duration-300">
-      {/* Page Title & Ownership Meta */}
+      {/* Page Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-[11px] font-bold">
-              ⭐ Member 1 Feature (Team Lead + Chatbot)
-            </span>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-semibold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Week 1–5 Complete
-            </span>
-          </div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
             <span>Adaptive AI Study Tutor</span>
             <Sparkles className="w-5 h-5 text-indigo-400" />

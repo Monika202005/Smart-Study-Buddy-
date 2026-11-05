@@ -116,7 +116,7 @@ export default function Navbar({ onMobileMenuToggle }) {
             </div>
             <div className="hidden xl:block text-left">
               <p className="text-xs font-semibold text-slate-200 leading-tight">{user.name}</p>
-              <p className="text-[10px] text-indigo-400 font-medium leading-tight">Member 1 (Lead)</p>
+              <p className="text-[10px] text-indigo-400 font-medium leading-tight">Student</p>
             </div>
           </button>
 

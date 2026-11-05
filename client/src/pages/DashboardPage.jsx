@@ -65,11 +65,6 @@ export default function DashboardPage() {
 
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="max-w-xl text-center md:text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-semibold mb-3">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Full Stack Development Project &bull; Team of 4</span>
-            </div>
-
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-tight">
               Welcome back, <span className="bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">{user.name}</span>!
             </h1>
@@ -114,7 +109,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Quick Metrics Bar (Member D Preview) */}
+      {/* Quick Metrics Bar */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800/80">
           <div className="flex items-center justify-between text-slate-400 text-xs">
