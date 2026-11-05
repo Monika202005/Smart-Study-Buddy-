@@ -7,12 +7,13 @@ import { getDBStatus } from '../config/db.js';
  */
 export async function generateQuiz(req, res) {
   try {
-    const { topic = 'General CS', subject = 'Computer Science', count = 3, userId = 'default_student_1' } = req.body;
+    const { topic = 'General CS', subject = 'Computer Science', count = 3 } = req.body || {};
+    const userId = req.user?.userId || 'default_student_1';
 
-    const topicClean = topic.trim();
-    const subjectClean = subject.trim();
+    const topicClean = String(topic).trim().slice(0, 100);
+    const subjectClean = String(subject).trim().slice(0, 100);
+    const validCount = Math.min(Math.max(parseInt(count, 10) || 3, 1), 10);
 
-    // High yield question bank templates for intelligent local generation
     const samplePool = [
       {
         question: `What is the primary design purpose and asymptotic benefit of ${topicClean}?`,
@@ -52,8 +53,8 @@ export async function generateQuiz(req, res) {
       },
     ];
 
-    const generatedCards = samplePool.slice(0, count).map((item, idx) => ({
-      _id: `card_${Date.now()}_${idx}`,
+    const generatedCards = samplePool.slice(0, validCount).map((item, idx) => ({
+      _id: `card_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
       userId,
       subjectId: 'cs_dynamic',
       subjectName: subjectClean,
@@ -69,7 +70,7 @@ export async function generateQuiz(req, res) {
     }));
 
     // Add to memory
-    generatedCards.forEach(c => memoryFlashcards.push(c));
+    generatedCards.forEach((c) => memoryFlashcards.push(c));
 
     if (getDBStatus().connected) {
       try {
@@ -98,14 +99,15 @@ export async function generateQuiz(req, res) {
  */
 export async function recordQuizResult(req, res) {
   try {
-    const { cardId, result, selectedOption, userId = 'default_student_1' } = req.body;
+    const { cardId, result, selectedOption } = req.body || {};
+    const userId = req.user?.userId || 'default_student_1';
 
     if (!cardId || !['correct', 'incorrect'].includes(result)) {
       return res.status(400).json({ error: 'Valid cardId and result (correct/incorrect) are required.' });
     }
 
-    // Update in memory store
-    const card = memoryFlashcards.find(c => c._id === cardId);
+    // Update in memory store for this user
+    const card = memoryFlashcards.find((c) => c._id === cardId && (c.userId === userId || !c.userId));
     if (card) {
       card.lastResult = result;
       card.lastAttemptedAt = new Date();
@@ -113,10 +115,13 @@ export async function recordQuizResult(req, res) {
 
     if (getDBStatus().connected) {
       try {
-        await FlashcardQuizModel.findByIdAndUpdate(cardId, {
-          lastResult: result,
-          lastAttemptedAt: new Date(),
-        });
+        await FlashcardQuizModel.findOneAndUpdate(
+          { _id: cardId, userId },
+          {
+            lastResult: result,
+            lastAttemptedAt: new Date(),
+          }
+        );
       } catch (e) {
         // silent
       }
@@ -136,21 +141,23 @@ export async function recordQuizResult(req, res) {
 
 /**
  * GET /api/quiz/flashcards
- * Returns all flashcards for study, with optional topic/subject filter
+ * Returns all flashcards for study, filtered by user and optional topic/subject/status
  */
 export async function getFlashcards(req, res) {
   try {
-    const { subjectId, topicId, status } = req.query;
-    let cards = [...memoryFlashcards];
+    const userId = req.user?.userId || 'default_student_1';
+    const { subjectId, topicId, status } = req.query || {};
+
+    let cards = memoryFlashcards.filter((c) => c.userId === userId || !c.userId);
 
     if (subjectId) {
-      cards = cards.filter(c => c.subjectId === subjectId);
+      cards = cards.filter((c) => c.subjectId === subjectId);
     }
     if (topicId) {
-      cards = cards.filter(c => c.topicId === topicId);
+      cards = cards.filter((c) => c.topicId === topicId);
     }
     if (status) {
-      cards = cards.filter(c => c.lastResult === status);
+      cards = cards.filter((c) => c.lastResult === status);
     }
 
     return res.status(200).json({
@@ -169,11 +176,14 @@ export async function getFlashcards(req, res) {
  */
 export async function getWeakTopics(req, res) {
   try {
-    const incorrectCards = memoryFlashcards.filter(c => c.lastResult === 'incorrect');
+    const userId = req.user?.userId || 'default_student_1';
+    const incorrectCards = memoryFlashcards.filter(
+      (c) => (c.userId === userId || !c.userId) && c.lastResult === 'incorrect'
+    );
 
     // Group by subject and topic
     const weakMap = {};
-    incorrectCards.forEach(c => {
+    incorrectCards.forEach((c) => {
       const key = `${c.subjectName} — ${c.topicName}`;
       if (!weakMap[key]) {
         weakMap[key] = {
@@ -193,9 +203,10 @@ export async function getWeakTopics(req, res) {
       success: true,
       totalWeakTopics: weakTopics.length,
       weakTopics,
-      recommendation: weakTopics.length > 0
-        ? `Review the following ${weakTopics.length} topic(s) with your AI Study Tutor before your next exam!`
-        : '🎉 Excellent! No weak topics detected. Your retention is strong across all subjects.',
+      recommendation:
+        weakTopics.length > 0
+          ? `Review the following ${weakTopics.length} topic(s) with your AI Study Tutor before your next exam!`
+          : '🎉 Excellent! No weak topics detected. Your retention is strong across all subjects.',
     });
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Could not calculate weak topics.' });

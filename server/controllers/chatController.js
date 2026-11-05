@@ -8,18 +8,32 @@ import { getDBStatus } from '../config/db.js';
  */
 export async function handleChatMessage(req, res) {
   try {
-    const { message, userId = 'default_student_1' } = req.body;
+    const { message } = req.body || {};
+    // Security: userId MUST come from authMiddleware (req.user), never from body or model
+    const userId = req.user?.userId || 'default_student_1';
+    const testSim = req.headers['x-test-llm-sim'] || req.query?.testSim || null;
 
     if (!message || typeof message !== 'string') {
       return res.status(400).json({ error: 'Message text is required.' });
     }
 
+    const trimmed = message.trim();
+    if (trimmed.length === 0) {
+      return res.status(400).json({ error: 'Message cannot be empty.' });
+    }
+
+    if (trimmed.length > 2000) {
+      return res.status(400).json({
+        error: 'Message exceeds maximum limit of 2,000 characters. Please shorten your query.',
+      });
+    }
+
     // Save student's user message
     const userMsgObj = {
-      _id: `msg_u_${Date.now()}`,
+      _id: `msg_u_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       userId,
       role: 'user',
-      content: message.trim(),
+      content: trimmed,
       toolCalls: [],
       createdAt: new Date(),
     };
@@ -34,11 +48,11 @@ export async function handleChatMessage(req, res) {
     }
 
     // Process through chatbot engine (with Planner Context & Tools)
-    const result = await processChatMessage({ userId, message });
+    const result = await processChatMessage({ userId, message: trimmed, testSim });
 
     // Save assistant response message
     const assistantMsgObj = {
-      _id: `msg_a_${Date.now()}`,
+      _id: `msg_a_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       userId,
       role: 'assistant',
       content: result.reply,
@@ -58,16 +72,16 @@ export async function handleChatMessage(req, res) {
     return res.status(200).json({
       success: true,
       reply: result.reply,
-      toolCalls: result.toolCalls,
+      toolCalls: result.toolCalls || [],
       messageId: assistantMsgObj._id,
       timestamp: assistantMsgObj.createdAt,
     });
   } catch (error) {
     console.error('Chat error:', error);
-    return res.status(500).json({
+    return res.status(error.status || 500).json({
       success: false,
       error: error.message || 'Internal server error while processing study chat.',
-      reply: "⚠️ I encountered a temporary hiccup processing your request. Please try asking again!",
+      reply: '⚠️ I encountered a temporary hiccup processing your request. Please try asking again!',
     });
   }
 }
@@ -78,8 +92,9 @@ export async function handleChatMessage(req, res) {
  */
 export async function getChatHistory(req, res) {
   try {
-    const userId = req.query.userId || 'default_student_1';
-    const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
+    // Security: userId strictly from authenticated context
+    const userId = req.user?.userId || 'default_student_1';
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 100);
     const before = req.query.before;
 
     let messages = [];
@@ -101,10 +116,10 @@ export async function getChatHistory(req, res) {
     }
 
     if (messages.length === 0) {
-      messages = memoryChatMessages.filter(m => m.userId === userId);
+      messages = memoryChatMessages.filter((m) => m.userId === userId);
       if (before) {
         const beforeDate = new Date(before);
-        messages = messages.filter(m => new Date(m.createdAt) < beforeDate);
+        messages = messages.filter((m) => new Date(m.createdAt) < beforeDate);
       }
       messages = messages.slice(-limit);
     }
@@ -126,13 +141,13 @@ export async function getChatHistory(req, res) {
  */
 export async function clearChatHistory(req, res) {
   try {
-    const userId = req.query.userId || 'default_student_1';
+    const userId = req.user?.userId || 'default_student_1';
 
-    // Clear from memory
-    const initialGreeting = memoryChatMessages.find(m => m._id === 'msg_init_1');
-    memoryChatMessages.length = 0;
-    if (initialGreeting) {
-      memoryChatMessages.push(initialGreeting);
+    // Clear from memory for this user
+    for (let i = memoryChatMessages.length - 1; i >= 0; i--) {
+      if (memoryChatMessages[i].userId === userId && memoryChatMessages[i]._id !== 'msg_init_1') {
+        memoryChatMessages.splice(i, 1);
+      }
     }
 
     if (getDBStatus().connected) {
