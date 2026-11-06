@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Bot, Trash2, AlertCircle, RefreshCw, Sparkles, Shield, Compass } from 'lucide-react';
+import { Send, Bot, Trash2, AlertCircle, RefreshCw, Shield, Compass } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import ChatMessageItem from './ChatMessageItem';
 import PromptSuggestions from './PromptSuggestions';

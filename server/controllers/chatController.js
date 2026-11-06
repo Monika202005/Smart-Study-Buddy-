@@ -11,7 +11,6 @@ export async function handleChatMessage(req, res) {
     const { message } = req.body || {};
     // Security: userId MUST come from authMiddleware (req.user), never from body or model
     const userId = req.user?.userId || 'default_student_1';
-    const testSim = req.headers['x-test-llm-sim'] || req.query?.testSim || null;
 
     if (!message || typeof message !== 'string') {
       return res.status(400).json({ error: 'Message text is required.' });
@@ -48,7 +47,7 @@ export async function handleChatMessage(req, res) {
     }
 
     // Process through chatbot engine (with Planner Context & Tools)
-    const result = await processChatMessage({ userId, message: trimmed, testSim });
+    const result = await processChatMessage({ userId, message: trimmed });
 
     // Save assistant response message
     const assistantMsgObj = {

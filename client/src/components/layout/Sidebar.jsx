@@ -11,13 +11,17 @@ import {
   Settings,
   Sparkles,
   ChevronRight,
-  Flame,
   LogIn,
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
+import { calculateCalendarDaysLeft, formatDaysLeftLabel } from '../../utils/dateUtils';
 
 export default function Sidebar({ mobileOpen, onClose }) {
   const { openChatWithPrompt } = useStore();
+
+  const targetExamDateStr = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const targetDaysLeft = calculateCalendarDaysLeft(targetExamDateStr);
+  const targetDaysLabel = formatDaysLeftLabel(targetDaysLeft);
 
   const navItems = [
     {
@@ -141,7 +145,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
                 Target Exam
               </span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                In 5 Days
+                {targetDaysLabel}
               </span>
             </div>
             <p className="text-xs font-semibold text-white truncate">CS301: Data Structures</p>
@@ -154,7 +158,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
 
             <button
               onClick={() => {
-                onClose && onClose();
+                if (onClose) onClose();
                 openChatWithPrompt('Explain AVL Tree rotations with a simple analogy, and quiz me!');
               }}
               className="w-full mt-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold transition-all shadow-md shadow-indigo-600/30"

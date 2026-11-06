@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CalendarDays, Plus, RotateCcw, Sparkles, CheckCircle2, Clock, Bot } from 'lucide-react';
+import { RotateCcw, Sparkles, CheckCircle2, Bot } from 'lucide-react';
 import TeammateModuleStub from '../components/layout/TeammateModuleStub';
 import { fetchTasksApi, triggerGeneratePlanApi, triggerRescheduleMissedApi, toggleTaskCompleteApi } from '../services/api';
 import { useStore } from '../store/useStore';
@@ -111,7 +111,10 @@ export default function PlannerPage() {
         )}
 
         {/* Task Board Columns */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {loading ? (
+          <div className="p-8 text-center text-slate-500 text-xs">Loading planner board...</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Column 1: Overdue / Missed */}
           <div className="p-4 rounded-2xl bg-slate-950/60 border border-rose-500/20 space-y-3">
             <div className="flex items-center justify-between">
@@ -206,6 +209,7 @@ export default function PlannerPage() {
             </div>
           </div>
         </div>
+        )}
       </div>
     </TeammateModuleStub>
   );

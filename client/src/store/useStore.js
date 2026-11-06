@@ -207,8 +207,6 @@ export const useStore = create((set, get) => ({
         }));
         return data.cards;
       }
-    } catch (err) {
-      throw err;
     } finally {
       set({ isFlashcardsLoading: false });
     }

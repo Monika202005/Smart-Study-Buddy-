@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, CheckCircle, BrainCircuit, Bot, Clock, ChevronDown } from 'lucide-react';
+import { CheckCircle, BrainCircuit, Bot, ChevronDown } from 'lucide-react';
 import TeammateModuleStub from '../components/layout/TeammateModuleStub';
 import { fetchSubjectsApi } from '../services/api';
 import { useStore } from '../store/useStore';

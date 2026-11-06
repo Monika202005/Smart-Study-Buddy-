@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Sparkles, Flame, Clock, Bot, Bell, ShieldCheck, Menu, LogIn, LogOut } from 'lucide-react';
+import { Sparkles, Flame, Clock, Bot, Bell, Menu, LogIn, LogOut } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 
 export default function Navbar({ onMobileMenuToggle }) {

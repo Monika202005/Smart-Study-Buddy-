@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RotateCw, CheckCircle2, XCircle, ArrowLeft, ArrowRight, Sparkles, BookOpen, Brain } from 'lucide-react';
+import { RotateCw, CheckCircle2, XCircle, ArrowLeft, ArrowRight, Brain } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 
 export default function FlashcardDeck({ cards = [] }) {

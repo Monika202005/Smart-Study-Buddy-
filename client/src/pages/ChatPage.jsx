@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bot, Sparkles, Shield, Cpu, Terminal } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import ChatInterface from '../components/chat/ChatInterface';
 
 export default function ChatPage() {

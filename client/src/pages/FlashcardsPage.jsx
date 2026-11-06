@@ -2,12 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
   BrainCircuit,
   Sparkles,
-  Plus,
   Layers,
   HelpCircle,
   AlertTriangle,
   Filter,
-  CheckCircle2,
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import FlashcardDeck from '../components/flashcards/FlashcardDeck';

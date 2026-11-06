@@ -1,6 +1,6 @@
 import request from 'supertest';
 import app from '../app.js';
-import { normalizeInput } from '../services/chatbotService.js';
+import { normalizeInput, setGeminiCaller, resetGeminiCaller } from '../services/chatbotService.js';
 
 describe('Chat API Endpoint (/api/chat)', () => {
   describe('Input Validation & Guardrails', () => {
@@ -62,10 +62,19 @@ describe('Chat API Endpoint (/api/chat)', () => {
   });
 
   describe('LLM Timeout & Failure Protection (TASK 1)', () => {
+    afterEach(() => {
+      resetGeminiCaller();
+    });
+
     it('returns friendly fallback tutor response on simulated LLM timeout (never 500)', async () => {
+      setGeminiCaller(async () => {
+        const timeoutErr = new Error('The operation was aborted due to timeout.');
+        timeoutErr.name = 'AbortError';
+        throw timeoutErr;
+      });
+
       const res = await request(app)
         .post('/api/chat')
-        .set('x-test-llm-sim', 'timeout')
         .send({ message: 'Explain AVL Tree balance factor' });
 
       expect(res.status).toBe(200);
@@ -75,9 +84,14 @@ describe('Chat API Endpoint (/api/chat)', () => {
     });
 
     it('returns friendly fallback tutor response on simulated LLM failure (never 500)', async () => {
+      setGeminiCaller(async () => {
+        const upstreamErr = new Error('HTTP 500: Internal Server Error from upstream LLM');
+        upstreamErr.status = 500;
+        throw upstreamErr;
+      });
+
       const res = await request(app)
         .post('/api/chat')
-        .set('x-test-llm-sim', 'failure')
         .send({ message: 'Explain B+ Tree leaf nodes' });
 
       expect(res.status).toBe(200);
@@ -116,3 +130,4 @@ describe('Chat API Endpoint (/api/chat)', () => {
     });
   });
 });
+

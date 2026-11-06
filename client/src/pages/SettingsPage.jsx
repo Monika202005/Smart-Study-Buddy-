@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Clock, Shield, Database, Cpu, CheckCircle } from 'lucide-react';
+import { User, Clock, Cpu, CheckCircle } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 export default function SettingsPage() {

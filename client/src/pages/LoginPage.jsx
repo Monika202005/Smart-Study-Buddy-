@@ -2,15 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Sparkles,
-  Bot,
   Mail,
   Lock,
   User,
-  Clock,
   Eye,
   EyeOff,
   ArrowRight,
-  ShieldCheck,
   AlertCircle,
   Zap,
 } from 'lucide-react';

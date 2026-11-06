@@ -14,6 +14,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import app from '../app.js';
+import { setGeminiCaller, resetGeminiCaller } from '../services/chatbotService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,19 +65,11 @@ async function sendRequest(baseUrl, { method = 'POST', endpoint = '/api/chat', b
 async function runAllTests() {
   console.log('🧪 Starting StudyBuddy Chatbot Live Test Runner...');
 
-  let baseUrl = 'http://localhost:5001';
-  let spawnedServer = null;
-
-  const running = await isServerRunning(baseUrl);
-  if (running) {
-    console.log(`📡 Connected to existing local server at ${baseUrl}`);
-  } else {
-    console.log('⚡ No running server on 5001 detected. Spawning in-memory test instance...');
-    const spawned = await startLocalServer();
-    spawnedServer = spawned.server;
-    baseUrl = spawned.baseUrl;
-    console.log(`📡 Test instance active at ${baseUrl}`);
-  }
+  // Always spawn dedicated in-process test server on ephemeral port for clean test isolation and caller injection
+  const spawned = await startLocalServer();
+  const spawnedServer = spawned.server;
+  const baseUrl = spawned.baseUrl;
+  console.log(`📡 In-process test instance active at ${baseUrl}`);
 
   const testCases = [
     {
@@ -364,37 +357,53 @@ async function runAllTests() {
     {
       id: 19,
       category: 'Fault Tolerance (EXTRA)',
-      prompt: 'Simulated LLM API failure (HTTP 500 upstream)',
+      prompt: 'Simulated LLM API failure (HTTP 500 upstream, verified via dependency injection)',
       expected: 'Retries once then returns friendly fallback tutor response (status 200, never 500).',
       action: async () => {
-        const res = await sendRequest(baseUrl, {
-          body: { message: 'Explain dynamic programming' },
-          headers: { 'x-test-llm-sim': 'failure' },
+        setGeminiCaller(async () => {
+          const upstreamErr = new Error('HTTP 500: Internal Server Error from upstream LLM');
+          upstreamErr.status = 500;
+          throw upstreamErr;
         });
-        const pass = res.status === 200 && res.data?.reply?.includes('StudyBuddy Tutor Note') && (res.data?.toolCalls?.length || 0) === 0;
-        return {
-          pass,
-          status: res.status,
-          actual: `Status ${res.status}. Fallback activated: "${res.data?.reply?.slice(0, 80).replace(/\n/g, ' ')}..."`,
-        };
+        try {
+          const res = await sendRequest(baseUrl, {
+            body: { message: 'Explain dynamic programming' },
+          });
+          const pass = res.status === 200 && res.data?.reply?.includes('StudyBuddy Tutor Note') && (res.data?.toolCalls?.length || 0) === 0;
+          return {
+            pass,
+            status: res.status,
+            actual: `Status ${res.status}. Fallback activated: "${res.data?.reply?.slice(0, 80).replace(/\n/g, ' ')}..."`,
+          };
+        } finally {
+          resetGeminiCaller();
+        }
       },
     },
     {
       id: 20,
       category: 'Fault Tolerance (EXTRA)',
-      prompt: 'Simulated LLM Timeout (AbortController abort)',
+      prompt: 'Simulated LLM Timeout (AbortController abort, verified via dependency injection)',
       expected: 'Retries once then returns friendly fallback tutor response (status 200, never 500).',
       action: async () => {
-        const res = await sendRequest(baseUrl, {
-          body: { message: 'Explain AVL balancing' },
-          headers: { 'x-test-llm-sim': 'timeout' },
+        setGeminiCaller(async () => {
+          const timeoutErr = new Error('The operation was aborted due to timeout.');
+          timeoutErr.name = 'AbortError';
+          throw timeoutErr;
         });
-        const pass = res.status === 200 && res.data?.reply?.includes('StudyBuddy Tutor Note') && (res.data?.toolCalls?.length || 0) === 0;
-        return {
-          pass,
-          status: res.status,
-          actual: `Status ${res.status}. Fallback activated: "${res.data?.reply?.slice(0, 80).replace(/\n/g, ' ')}..."`,
-        };
+        try {
+          const res = await sendRequest(baseUrl, {
+            body: { message: 'Explain AVL balancing' },
+          });
+          const pass = res.status === 200 && res.data?.reply?.includes('StudyBuddy Tutor Note') && (res.data?.toolCalls?.length || 0) === 0;
+          return {
+            pass,
+            status: res.status,
+            actual: `Status ${res.status}. Fallback activated: "${res.data?.reply?.slice(0, 80).replace(/\n/g, ' ')}..."`,
+          };
+        } finally {
+          resetGeminiCaller();
+        }
       },
     },
     {
@@ -481,10 +490,30 @@ async function runAllTests() {
   // Generate markdown report sorted strictly by ID (1 through 21)
   const sortedIds = Object.keys(resultMap).map(Number).sort((a, b) => a - b);
 
+  const apiKey = process.env.GEMINI_API_KEY;
+  const configuredModel = process.env.LLM_MODEL || 'gemini-1.5-flash';
+  const modeStr = apiKey ? `LLM: gemini (${configuredModel})` : 'LLM: fallback (rule-based simulated model)';
+  const modelName = apiKey ? configuredModel : 'local-studybuddy-simulator (offline)';
+
   let md = `# StudyBuddy — Chatbot & Tool Calling Real Test Results\n\n`;
+  md += `**Execution Mode:** \`${modeStr}\`  \n`;
+  md += `**Model:** \`${modelName}\`  \n`;
   md += `**Execution Timestamp:** \`${timestamp}\`  \n`;
   md += `**Target Server:** \`${baseUrl}\`  \n`;
   md += `**Overall Evaluation:** **${allPass ? '21 / 21 PASSED (100%)' : 'FAILURES DETECTED'}**\n\n`;
+
+  if (!apiKey) {
+    md += `> [!NOTE]\n`;
+    md += `> **Offline Fallback Run Notice:** \`GEMINI_API_KEY\` was not present in the local execution environment. All tests were executed using the deterministic local smart tutor fallback engine.\n`;
+    md += `> The following test cases verify tool calling, schema validation, and error fallback mechanics offline, but require a live \`GEMINI_API_KEY\` for creative generative reasoning evaluation:\n`;
+    md += `> - **Case 1 (Schedule Awareness)**: Full-synthesis daily planner briefing.\n`;
+    md += `> - **Case 4 (Concept Explanation)**: Dynamic AVL tree analogical reasoning.\n`;
+    md += `> - **Case 5 (Comparative Doubt)**: Open-ended Stack vs Queue comparison.\n`;
+    md += `> - **Case 6 (Database Systems)**: B+ tree versus B tree analysis.\n`;
+    md += `> - **Case 7 (Operating Systems)**: Thrashing & working set explanation.\n`;
+    md += `> - **Case 15 (Flashcard Generation)**: Generative multiple-choice flashcard creation.\n\n`;
+  }
+
   md += `| # | Category | Test Prompt | Expected Behavior | Actual Output (Truncated) | Result | Timestamp |\n`;
   md += `|---|---|---|---|---|:---:|---|\n`;
 

@@ -68,10 +68,17 @@ export function getFriendlyFallbackResponse(userMessage, plannerContext) {
 }
 
 /**
- * Simulated Model Engine
+ * FALLBACK-ONLY BEHAVIOUR:
  * Used when GEMINI_API_KEY is not configured or during offline testing.
- * Acts as an intelligent academic model that emits structured tool calls or concept explanations.
- * Tools are ONLY triggered when this model function emits a tool call, NEVER by regex-matching user text.
+ * Acts as a deterministic local smart study tutor simulator that maps user intent
+ * to simulated tool calls or academic concept explanations.
+ * 
+ * IMPORTANT ARCHITECTURAL DISTINCTION:
+ * - In this offline fallback simulator, query keywords are mapped to simulated functionCall objects.
+ * - In the primary LLM (Gemini) path, tools are NEVER triggered by regex or user text matching.
+ *   The model alone decides when to emit a functionCall in its candidates output.
+ * - In both paths, tool execution occurs strictly through validateToolArguments() and executeTool(),
+ *   ensuring that tool arguments are validated and authorization (userId) is enforced.
  */
 function simulatedModelTurn({ userMessage, plannerContext, iteration = 0, previousToolResult = null }) {
   const norm = normalizeInput(userMessage);
@@ -273,38 +280,41 @@ function simulatedModelTurn({ userMessage, plannerContext, iteration = 0, previo
   };
 }
 
+let customGeminiCaller = null;
+
+/**
+ * Dependency injection for automated test harnesses (replaces header/query hooks).
+ * @param {Function|null} fn - Custom caller (apiKey, payload) => Promise<Response|object>
+ */
+export function setGeminiCaller(fn) {
+  customGeminiCaller = fn;
+}
+
+export function resetGeminiCaller() {
+  customGeminiCaller = null;
+}
+
 /**
  * Executes a Gemini API call with:
  * - AbortController timeout (configurable via LLM_TIMEOUT_MS, default 15s)
  * - Exactly one retry for timeouts, network errors, HTTP 429, and 5xx
  * - No retry for 4xx client/validation errors
  */
-async function callGeminiWithTimeoutAndRetry(apiKey, payload, testSim = null) {
+async function callGeminiWithTimeoutAndRetry(apiKey, payload) {
   const timeoutMs = parseInt(process.env.LLM_TIMEOUT_MS, 10) || 15000;
-
-  // Test simulation hooks
-  if (testSim === 'timeout') {
-    const abortErr = new Error('The operation was aborted due to timeout.');
-    abortErr.name = 'AbortError';
-    throw abortErr;
-  }
-  if (testSim === 'failure') {
-    const error500 = new Error('HTTP 500: Internal Server Error from upstream LLM');
-    error500.status = 500;
-    throw error500;
-  }
-  if (testSim === 'network-error') {
-    const netErr = new TypeError('Failed to fetch: Network unreachable');
-    throw netErr;
-  }
+  const modelName = process.env.LLM_MODEL || 'gemini-1.5-flash';
 
   const executeOnce = async () => {
+    if (customGeminiCaller) {
+      return await customGeminiCaller(apiKey, payload);
+    }
+
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -325,23 +335,29 @@ async function callGeminiWithTimeoutAndRetry(apiKey, payload, testSim = null) {
   };
 
   const isRetryableResponse = (res) => {
-    return res.status === 429 || res.status >= 500;
+    return res && (res.status === 429 || res.status >= 500);
+  };
+
+  const parseResult = async (res) => {
+    if (!res) return null;
+    if (typeof res.json === 'function') {
+      return await res.json();
+    }
+    return res;
   };
 
   let firstAttemptResponse = null;
-  let firstAttemptError = null;
 
   try {
     firstAttemptResponse = await executeOnce();
-    if (firstAttemptResponse.ok) {
-      return await firstAttemptResponse.json();
+    if (firstAttemptResponse && (firstAttemptResponse.ok || firstAttemptResponse.candidates)) {
+      return await parseResult(firstAttemptResponse);
     }
-    if (!isRetryableResponse(firstAttemptResponse)) {
+    if (firstAttemptResponse && !isRetryableResponse(firstAttemptResponse)) {
       // 4xx client/validation error - do not retry
       throw new Error(`Gemini API returned client error ${firstAttemptResponse.status}: ${firstAttemptResponse.statusText}`);
     }
   } catch (err) {
-    firstAttemptError = err;
     if (!isRetryableError(err)) {
       throw err;
     }
@@ -351,10 +367,11 @@ async function callGeminiWithTimeoutAndRetry(apiKey, payload, testSim = null) {
   console.warn('⚠️ Gemini call encountered a retryable condition; executing single retry...');
   try {
     const secondAttemptResponse = await executeOnce();
-    if (secondAttemptResponse.ok) {
-      return await secondAttemptResponse.json();
+    if (secondAttemptResponse && (secondAttemptResponse.ok || secondAttemptResponse.candidates)) {
+      return await parseResult(secondAttemptResponse);
     }
-    throw new Error(`Gemini API retry returned status ${secondAttemptResponse.status}`);
+    const status = secondAttemptResponse ? secondAttemptResponse.status : 'unknown';
+    throw new Error(`Gemini API retry returned status ${status}`);
   } catch (secondErr) {
     console.warn('Gemini retry also failed:', secondErr.message);
     throw secondErr;
@@ -364,7 +381,7 @@ async function callGeminiWithTimeoutAndRetry(apiKey, payload, testSim = null) {
 /**
  * Main chat handler: orchestrates guardrails, planner context injection, LLM calls, and tools.
  */
-export async function processChatMessage({ userId = 'default_student_1', message, testSim = null }) {
+export async function processChatMessage({ userId = 'default_student_1', message }) {
   // Guardrail 1: Message length and type validation
   if (!message || typeof message !== 'string') {
     throw new Error('Message content is required.');
@@ -415,8 +432,8 @@ export async function processChatMessage({ userId = 'default_student_1', message
   const apiKey = process.env.GEMINI_API_KEY;
   const toolCalls = [];
 
-  // Step 3: Handle execution via Gemini API (if key present) or via Simulated Model
-  if (apiKey) {
+  // Step 3: Handle execution via Gemini API (if key present or customGeminiCaller injected)
+  if (apiKey || customGeminiCaller) {
     try {
       const delimitedContext = `
 <<<PLANNER_CONTEXT>>>
@@ -451,7 +468,7 @@ ${trimmedMessage}
           },
         };
 
-        const data = await callGeminiWithTimeoutAndRetry(apiKey, payload, testSim);
+        const data = await callGeminiWithTimeoutAndRetry(apiKey || 'mock-key', payload);
         const candidate = data.candidates?.[0];
         const parts = candidate?.content?.parts || [];
 
@@ -516,12 +533,7 @@ ${trimmedMessage}
     }
   }
 
-  // Step 4: Simulated Model Engine (when GEMINI_API_KEY is not configured or in tests)
-  // Check if test simulation requested timeout or failure
-  if (testSim === 'timeout' || testSim === 'failure' || testSim === 'network-error') {
-    return getFriendlyFallbackResponse(trimmedMessage, plannerContext);
-  }
-
+  // Step 4: Simulated Model Engine (when GEMINI_API_KEY is not configured and no customGeminiCaller)
   try {
     let iteration = 0;
     const MAX_TOOL_ITERATIONS = 3;
