@@ -7,7 +7,10 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const apiKey = process.env.GEMINI_API_KEY;
-const modelName = process.env.LLM_MODEL || 'gemini-1.5-flash';
+const rawModel = process.env.LLM_MODEL || 'gemini-3.5-flash-lite';
+const modelName = ['gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'].includes(rawModel)
+  ? 'gemini-3.5-flash-lite'
+  : rawModel;
 
 async function testLLM() {
   console.log('🤖 --- StudyBuddy LLM Connectivity & Model Verification ---');

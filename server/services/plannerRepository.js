@@ -37,16 +37,24 @@ export function calculateCalendarDaysLeft(targetDateStr) {
  */
 export async function getUser(userId) {
   if (!userId) return null;
-  const user = await UserModel.findById(userId).lean();
-  if (!user) return null;
-  return {
-    id: user._id.toString(),
-    _id: user._id.toString(),
-    name: user.name,
-    email: user.email,
-    dailyHours: user.dailyHours || 4,
-    theme: user.theme || 'dark',
-  };
+  try {
+    const isObjectId = typeof userId === 'string' && /^[0-9a-fA-F]{24}$/.test(userId);
+    const user = isObjectId
+      ? await UserModel.findById(userId).lean()
+      : await UserModel.findOne({ email: userId }).lean();
+
+    if (!user) return null;
+    return {
+      id: user._id.toString(),
+      _id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      dailyHours: user.dailyHours || 4,
+      theme: user.theme || 'dark',
+    };
+  } catch (err) {
+    return null;
+  }
 }
 
 /**
