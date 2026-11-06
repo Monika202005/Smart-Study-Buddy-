@@ -9,7 +9,11 @@ export const chatRateLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
   max: 30,
   skip: (req) => {
-    // Allows automated test runner functional tests to bypass IP counter exhaustion
+    // Security: Bypass is strictly restricted to automated testing environments (NODE_ENV === 'test').
+    // In production or any non-test environment, this header is completely ignored.
+    if (process.env.NODE_ENV !== 'test') {
+      return false;
+    }
     return req.headers['x-skip-rate-limit'] === 'true';
   },
   message: {

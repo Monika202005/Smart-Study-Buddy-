@@ -48,7 +48,9 @@ jobs:
         node server/scripts/run-chat-tests.js
 
     - name: Run Optional Live Gemini Integration Check
-      if: env.GEMINI_API_KEY != ''
+      if: ${{ secrets.GEMINI_API_KEY != '' }}
       continue-on-error: true
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       run: |
         cd server && npm run test:llm

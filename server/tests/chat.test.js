@@ -158,5 +158,33 @@ describe('Chat API Endpoint (/api/chat)', () => {
       expect(lastRes.status).toBe(429);
       expect(lastRes.body.error).toMatch(/Rate limit exceeded/i);
     });
+
+    it('strictly enforces rate limiter in production even if x-skip-rate-limit is sent', async () => {
+      const originalEnv = process.env.NODE_ENV;
+      try {
+        process.env.NODE_ENV = 'production';
+        const res = await request(app)
+          .post('/api/chat')
+          .set('Authorization', authHeader)
+          .set('x-skip-rate-limit', 'true')
+          .send({ message: 'Attacking rate limiter with bypass header in production' });
+
+        expect(res.status).toBe(429);
+        expect(res.body.error).toMatch(/Rate limit exceeded/i);
+      } finally {
+        process.env.NODE_ENV = originalEnv;
+      }
+    });
+
+    it('allows rate limit bypass only when NODE_ENV is test and x-skip-rate-limit is true', async () => {
+      const res = await request(app)
+        .post('/api/chat')
+        .set('Authorization', authHeader)
+        .set('x-skip-rate-limit', 'true')
+        .send({ message: 'Valid automated test query bypassing IP exhaustion' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
   });
 });

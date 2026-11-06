@@ -27,6 +27,7 @@ import { toDateString } from '../services/analyticsService.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
+process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 
 const testUserId = new mongoose.Types.ObjectId().toString();
 const testToken = jwt.sign(
