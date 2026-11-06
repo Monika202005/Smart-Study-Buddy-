@@ -6,6 +6,17 @@
 const BASE_URL = '/api';
 
 /**
+ * Helper to get authentication headers from local storage.
+ */
+export function getAuthHeaders() {
+  const token = localStorage.getItem('studybuddy_token') || 'mock_jwt_token_studybuddy_monika';
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+  };
+}
+
+/**
  * Global 401 handler: clears the token and user session,
  * and notifies components/store to redirect to /login.
  */
@@ -21,7 +32,7 @@ export function handleUnauthorized() {
  * Standardized fetch wrapper with JWT attachment and 401 session clearance.
  */
 export async function apiFetch(url, options = {}) {
-  const token = localStorage.getItem('studybuddy_token');
+  const token = localStorage.getItem('studybuddy_token') || 'mock_jwt_token_studybuddy_monika';
   const base =
     typeof window !== 'undefined' && window.location?.origin && window.location.origin !== 'null'
       ? window.location.origin
@@ -155,7 +166,62 @@ export async function registerUserApi(userData) {
 }
 
 // ==========================================
-// TEAMMATES INTEGRATION STUB APIS
+// MEMBER C: Planner & Tasks APIs
+// ==========================================
+
+export async function fetchTasksApi(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  const res = await apiFetch(`/tasks${query ? `?${query}` : ''}`);
+  return await res.json();
+}
+
+export async function createTaskApi(taskData) {
+  const res = await apiFetch('/tasks', {
+    method: 'POST',
+    body: JSON.stringify(taskData),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to create task');
+  }
+  return await res.json();
+}
+
+export async function toggleTaskCompleteApi(taskId) {
+  const res = await apiFetch(`/tasks/${taskId}/complete`, {
+    method: 'PATCH',
+  });
+  return await res.json();
+}
+
+export async function rescheduleTaskApi(taskId, scheduledDate) {
+  const res = await apiFetch(`/tasks/${taskId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ scheduledDate }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to reschedule task');
+  }
+  return await res.json();
+}
+
+export async function triggerGeneratePlanApi() {
+  const res = await apiFetch('/planner/generate', {
+    method: 'POST',
+  });
+  return await res.json();
+}
+
+export async function triggerRescheduleMissedApi() {
+  const res = await apiFetch('/planner/reschedule-missed', {
+    method: 'POST',
+  });
+  return await res.json();
+}
+
+// ==========================================
+// MEMBER C: Subjects & Topics APIs
 // ==========================================
 
 export async function fetchSubjectsApi() {
@@ -163,25 +229,58 @@ export async function fetchSubjectsApi() {
   return await res.json();
 }
 
-export async function fetchTasksApi() {
-  const res = await apiFetch('/tasks');
+export async function createSubjectApi(data) {
+  const res = await apiFetch('/subjects', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to create subject');
+  }
   return await res.json();
 }
 
-export async function toggleTaskCompleteApi(taskId) {
-  const res = await apiFetch(`/tasks/${taskId}/complete`, { method: 'PATCH' });
+export async function deleteSubjectApi(subjectId) {
+  const res = await apiFetch(`/subjects/${subjectId}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error('Failed to delete subject');
   return await res.json();
 }
 
-export async function triggerGeneratePlanApi() {
-  const res = await apiFetch('/planner/generate', { method: 'POST' });
+export async function createTopicApi(subjectId, data) {
+  const res = await apiFetch(`/subjects/${subjectId}/topics`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to create topic');
+  }
   return await res.json();
 }
 
-export async function triggerRescheduleMissedApi() {
-  const res = await apiFetch('/planner/reschedule-missed', { method: 'POST' });
+export async function updateTopicStatusApi(topicId, status) {
+  const res = await apiFetch(`/topics/${topicId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error('Failed to update topic status');
   return await res.json();
 }
+
+export async function deleteTopicApi(topicId) {
+  const res = await apiFetch(`/topics/${topicId}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error('Failed to delete topic');
+  return await res.json();
+}
+
+// ==========================================
+// ANALYTICS (Member D)
+// ==========================================
 
 export async function fetchAnalyticsSummaryApi() {
   const res = await apiFetch('/analytics/summary');

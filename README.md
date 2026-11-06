@@ -19,10 +19,10 @@
 
 | Member | Role | Modules Owned | Implementation Status |
 |---|---|---|---|
-| **Member A (Monika - Lead)** | **Team Lead + AI Chatbot & Quiz** | App Shell & Routing, AI Chatbot UI & API, Dynamic Context Builder, 4 Tool Actions with Schema Validation, Flashcards & Quiz Engine with LLM generation, Weak-Topic Detection, Automated Test Suite (31 unit/integration + 21 chat runner tests), CI/CD, Shared API Contract. | **✅ REAL, HARDENED & TESTED** |
-| **Member B** | **Backend Core + Scheduler** | Production Auth (JWT verification + bcrypt password hashing), Mongoose models (User, Subject, Topic, Task, Session), Greedy auto-schedule algorithm, Reminders (node-cron + Nodemailer). | *Contract & Stubs Ready (Mock store active)* |
-| **Member C** | **Planner UI + Subjects** | Calendar view with drag-and-drop, Subjects & Syllabus management, Plan preview and reschedule modal UI. | *App Shell Mounted (Contract stubs active)* |
-| **Member D** | **Dashboard + Analytics** | Dashboard layout, Pomodoro focus timer, Analytics charts (Recharts), Streaks and focus metrics. | *App Shell Mounted (Contract stubs active)* |
+| **Member 1 (Monika - Lead)** | **Team Lead + AI Chatbot & Quiz** | App Shell & Routing, AI Chatbot UI & API, Dynamic Context Builder, 4 Tool Actions with Schema Validation, Flashcards & Quiz Engine with LLM generation, Weak-Topic Detection, Automated Test Suite (31 unit/integration + 21 chat runner + 4 smoke tests), CI/CD, Shared API Contract. | **✅ REAL, HARDENED & TESTED** |
+| **Member 2 (Member B)** | **Backend Core + Scheduler** | Auth APIs (JWT + bcrypt), Mongoose models (User, Subject, Topic, Task, Session, Reminder), Greedy auto-schedule algorithm, Reminders (node-cron + Nodemailer). | **✅ COMPLETE & TESTED** |
+| **Member 3 (Member C)** | **Planner UI + Subjects** | Landing page, Login/Signup forms, Planner calendar with drag-and-drop, Subjects & Syllabus management, plan preview, reschedule modal, task CRUD. | **✅ COMPLETE & TESTED** |
+| **Member 4 (Member D)** | **Dashboard + Analytics** | Dashboard layout, Pomodoro focus timer, Analytics charts (Recharts), streaks, dark mode pass. | *App Shell Ready* |
 
 ---
 
@@ -30,20 +30,18 @@
 
 To maintain transparency and documentation integrity:
 
-### What is REAL and Fully Implemented (Member A's Slice):
+### What is REAL and Fully Implemented (Member 1 / Lead Slice):
 - **AI Study Tutor Engine (`/chat` and API `POST /api/chat`)**: Full LLM integration (Google Gemini) with automatic timeout protection (AbortController, 15s default), single-retry on transient errors (429, 5xx, network drops, timeouts), and zero-500 fallback tutor response.
 - **Prompt Isolation & Defense-in-Depth**: Normalized input sanitization (lowercasing, multiple whitespace collapsing, zero-width space stripping), delimited prompt data boundaries (`<<<STUDENT_INPUT>>>`, `<<<PLANNER_CONTEXT>>>`, `<<<TOOL_RESULT>>>`), and system instruction boundaries.
 - **Tool Calling Execution**: Tools execute **strictly when the model emits a tool call** (never triggered by raw user text regex). Arguments are strictly validated server-side (`toolValidator.js`) with schema checks, length caps, enum checks, and ISO calendar date validation. Capped at 3 tool iterations per turn.
 - **Data Access Repository Layer (`plannerRepository.js`)**: Decoupled data access layer filtering all reads and writes by `userId` (extracted securely from `req.user.userId`).
 - **Flashcards & Quiz Engine (`/flashcards` and API `POST /api/quiz/*`)**: LLM-backed question generation with schema validation and curated fallbacks, 3D flip card active recall, quiz scoring, and automated weak-topic aggregation.
 - **Global App Shell**: Responsive sidebar, top navbar, theme styling, route transitions, and universal floating chatbot widget with bottom content clearance.
-- **Automated Testing & CI**: 31 Jest + Supertest automated tests, 21 real chatbot test runner cases (`server/scripts/run-chat-tests.js`), and GitHub Actions CI workflow.
+- **Automated Testing & CI**: 31 Jest + Supertest automated tests, 4 Vitest client smoke tests, 21 real chatbot test runner cases (`server/scripts/run-chat-tests.js`), and GitHub Actions CI workflow.
 
-### What is STUBBED (Awaiting Teammates' Modules):
-- **Authentication**: `POST /api/auth/login` and `POST /api/auth/register` return working mock tokens and user objects so the frontend functions seamlessly out-of-the-box. Member B will replace this with real bcrypt hashing and JWT verification.
-- **MongoDB Atlas Models**: An in-memory store (`mockPlannerStore.js` via `plannerRepository.js`) is used by default for zero-downtime development and testing. Real Mongoose models for Subject, Topic, Task, and Session will be integrated by Member B.
-- **Auto-Scheduler Algorithm**: The backend returns pre-calculated syllabus schedules; Member B will plug in the greedy scheduling algorithm.
-- **Calendar & Analytics UI**: Planner and analytics views render interactive previews using contract stubs until Member C and D wire them to real state.
+### Teammate Implementations Integrated:
+- **Member 2 (Backend & Scheduler)**: Real bcrypt password hashing and JWT token verification (`server/controllers/authController.js`), Mongoose schemas (`server/models/`), greedy auto-schedule algorithm (`server/services/schedulerService.js`), and cron reminders (`server/jobs/reminderJob.js`).
+- **Member 3 (Planner UI & Subjects)**: Interactive monthly/weekly planner calendar with drag-and-drop (`PlannerCalendar.jsx`), task details & reschedule modal (`TaskDetailModal.jsx`), subject and topic CRUD modals (`AddSubjectModal.jsx`, `AddTopicModal.jsx`), and marketing landing page (`LandingPage.jsx`).
 
 ---
 
@@ -64,8 +62,10 @@ studybuddy/
 │       ├── components/
 │       │   ├── chat/              # ChatInterface, ChatMessageItem, FloatingChatWidget, PromptSuggestions
 │       │   ├── flashcards/        # FlashcardDeck (3D flip), QuizMode, WeakTopicsBanner, GenerateQuizModal
+│       │   ├── planner/           # PlannerCalendar (drag-and-drop), TaskDetailModal (reschedule)
+│       │   ├── subjects/          # AddSubjectModal, AddTopicModal
 │       │   └── layout/            # AppShell, Navbar, Sidebar, TeammateModuleStub
-│       ├── pages/                 # DashboardPage, ChatPage, FlashcardsPage, PlannerPage, SubjectsPage, TimerPage, AnalyticsPage, SettingsPage, LoginPage
+│       ├── pages/                 # LandingPage, DashboardPage, ChatPage, FlashcardsPage, PlannerPage, SubjectsPage, TimerPage, AnalyticsPage, SettingsPage, LoginPage
 │       ├── services/api.js        # Frontend API client
 │       └── store/useStore.js      # Zustand centralized state
 ├── server/
@@ -90,7 +90,9 @@ studybuddy/
 │   ├── api-contract.md            # Formal API contract for teammates
 │   ├── chatbot-test-suite.md      # 21-case chatbot test specification
 │   ├── chatbot-test-results.md    # Real programmatic test run outputs & evidence
-│   ├── MEMBER_1_REPORT.md         # Final project report for Member A (Team Lead)
+│   ├── MEMBER_1_REPORT.md         # Final project report for Member 1 (Team Lead)
+│   ├── MEMBER_B_REPORT.md         # Final report chapters owned by Member B
+│   ├── MEMBER_C_REPORT.md         # Final report chapters owned by Member C (Planner UI & Subjects)
 │   └── team-roles.md              # Team roles and meeting schedule
 └── README.md
 ```

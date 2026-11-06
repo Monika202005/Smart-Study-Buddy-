@@ -17,7 +17,7 @@ export let mockSubjects = [
     color: '#6366f1',
     examDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // in 5 days
     topics: [
-      { id: 't1', name: 'Binary Search Trees & AVL', difficulty: 2, estimatedHours: 3, status: 'in-progress' },
+      { id: 't1', name: 'Binary Search Trees & AVL', difficulty: 2, estimatedHours: 3, status: 'in_progress' },
       { id: 't2', name: 'Graph Traversal (BFS/DFS)', difficulty: 2, estimatedHours: 3, status: 'completed' },
       { id: 't3', name: 'Dynamic Programming & Memoization', difficulty: 3, estimatedHours: 5, status: 'pending' },
     ],
@@ -39,7 +39,7 @@ export let mockSubjects = [
     color: '#f59e0b',
     examDate: new Date(Date.now() + 19 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // in 19 days
     topics: [
-      { id: 't7', name: 'Virtual Memory & Paging', difficulty: 3, estimatedHours: 4, status: 'in-progress' },
+      { id: 't7', name: 'Virtual Memory & Paging', difficulty: 3, estimatedHours: 4, status: 'in_progress' },
       { id: 't8', name: 'CPU Scheduling Algorithms', difficulty: 1, estimatedHours: 2, status: 'completed' },
       { id: 't9', name: 'Deadlock Detection & Prevention', difficulty: 2, estimatedHours: 3, status: 'pending' },
     ],

@@ -12,6 +12,7 @@ import {
   Sparkles,
   ChevronRight,
   LogIn,
+  Home,
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { calculateCalendarDaysLeft, formatDaysLeftLabel } from '../../utils/dateUtils';
@@ -70,6 +71,14 @@ export default function Sidebar({ mobileOpen, onClose }) {
       to: '/login',
       label: 'Login / Sign Up',
       icon: LogIn,
+    },
+    {
+      to: '/landing',
+      label: 'Landing Page',
+      icon: Home,
+      badge: '✅ Member C',
+      badgeColor: 'bg-sky-500/15 text-sky-300 border border-sky-500/25 font-bold',
+      highlight: true,
     },
   ];
 
