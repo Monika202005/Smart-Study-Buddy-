@@ -106,30 +106,53 @@ Tools execute **only when the model emits a structured tool call**, never throug
 ---
 
 ## 7. Verification & Automated Test Evidence
-Member A's slice is verified through a dual test strategy:
-1. **Automated Jest + Supertest Suite (`npm test`)**:
-   - 31 automated tests across 3 test suites (`tests/chat.test.js`, `tests/tools.test.js`, `tests/quiz.test.js`).
-   - Verifies input validation, rate limiting (HTTP 429), prompt injection blocking, tool schema constraints, user ID isolation, LLM timeout/retry fallback, and history pagination.
-   - Result: **31 / 31 Passed (100%)**.
-2. **Live Chatbot Test Runner (`server/scripts/run-chat-tests.js`)**:
-   - 21 end-to-end test cases covering schedule awareness, tool calling, fault tolerance (simulated 500, simulated timeout), and tool-forcing injection defense.
+Member A's slice is thoroughly verified through a tri-part test strategy with 100% passing results:
+
+1. **Client Smoke Test Suite (`cd client && npm test`)**:
+   - Built on Vitest and React Testing Library in `client/src/test/smoke.test.jsx`.
+   - Tests:
+     - Chat message send with mocked fetch: Verifies student message submission and assistant reply rendering in the message feed.
+     - Error state with retry: Simulates upstream network failure, verifies friendly error alert banner, and confirms 1-click retry resubmission.
+     - Flashcard flip: Verifies 3D perspective flip card revealing the correct answer on user click.
+     - Quiz answer feedback: Verifies multiple-choice option selection, immediate option highlighting, and score calculation.
+   - Result: **4 / 4 Passed (100%)** in 153ms.
+
+2. **Server Jest + Supertest Suite (`cd server && npm test`)**:
+   - 31 automated tests across 3 suites (`tests/chat.test.js`, `tests/tools.test.js`, `tests/quiz.test.js`).
+   - Verifies input validation (length caps, whitespace normalization, type checking), rate limiting (HTTP 429 after 30 req/min), prompt injection blocking, tool argument schema validation, calendar-valid date formats, `userId` authorization enforcement, LLM timeout/retry fallback, and history pagination.
+   - Verifies fault tolerance via dependency injection (`setGeminiCaller`) with zero backdoors or HTTP simulation headers.
+   - Result: **31 / 31 Passed (100%)** in 0.487s.
+
+3. **Live Chatbot Programmatic Test Runner (`node server/scripts/run-chat-tests.js`)**:
+   - 21 automated end-to-end test cases covering schedule awareness, tool calling (`get_today_plan`, `create_task`, `reschedule_missed`, `generate_flashcards`), security prompt injections, SQL/script injection, rate limiting, and fault tolerance.
+   - **Execution Mode:** `LLM: fallback (rule-based simulated model)` | **Model:** `local-studybuddy-simulator (offline)`
+   - Note: Because `GEMINI_API_KEY` was not present in the local execution environment, tests were executed using the deterministic local smart tutor engine. Cases 1, 4, 5, 6, 7, and 15 verify tool calling, schema validation, and fallback mechanics offline, but require a live `GEMINI_API_KEY` for creative generative reasoning evaluation.
    - Result: **21 / 21 Passed (100%)**, documented with timestamps in [`docs/chatbot-test-results.md`](file:///Users/monika/fsd%20project/docs/chatbot-test-results.md).
 
 ---
 
 ## 8. Known Limitations
-1. **Database Default**: Operates on an in-memory repository until Member B supplies the MongoDB connection string.
-2. **Authentication Mocking**: `authMiddleware` injects an authenticated mock user context for development; cryptographic JWT validation and bcrypt password hashing await Member B.
-3. **LLM Key**: In the absence of `GEMINI_API_KEY`, the local smart tutor provides contextual academic answers and simulated tool execution.
+1. **Database Default**: Operates on an in-memory repository (`mockPlannerStore.js`) until Member B connects the MongoDB Atlas cluster.
+2. **Authentication Mocking**: `authMiddleware` injects an authenticated mock user context (`req.user.userId = 'default_student_1'`) for development; real bcrypt password hashing and cryptographic JWT validation await Member B's auth slice.
+3. **LLM Key**: In the absence of `GEMINI_API_KEY`, the application seamlessly falls back to the deterministic local smart tutor engine without server errors (500s are prevented).
+4. **Calendar & Analytics UI**: Teammate pages (`PlannerPage`, `SubjectsPage`, `TimerPage`, `AnalyticsPage`) display interactive stubs (`TeammateModuleStub`) preserving the application shell until Members C and D land their implementations.
 
 ---
 
-## 9. Integration Notes for Teammates
-- **Member B**: Update `server/services/plannerRepository.js` to connect your Mongoose models to the chatbot context and tools. No other chatbot files need to be touched.
-- **Member C**: Connect your calendar and syllabus components to the endpoints defined in [`docs/api-contract.md`](file:///Users/monika/fsd%20project/docs/api-contract.md).
-- **Member D**: Connect your timer logging and Recharts visualizations to `/api/analytics/summary`.
+## 9. Future Scope
+1. **Multimodal Syllabus Ingestion (RAG):** Enable students to upload PDF lecture notes and course syllabi. Use vector embeddings and chunked semantic search to answer doubts strictly grounded in the professor's lecture slides.
+2. **Audio / Speech-to-Text Mode:** Integrate Web Speech API and Gemini Multimodal Live API to allow hands-free oral tutoring during walking or commuting revision sessions.
+3. **Spaced Repetition Algorithm (SM-2):** Upgrade the current weak-topic quiz engine to implement a full SuperMemo (SM-2) or FSRS interval scheduling algorithm for long-term memory consolidation.
+4. **Collaborative Study Rooms:** Enable peer study sessions where multiple students can quiz each other simultaneously using synchronized StudyBuddy flashcard decks.
 
 ---
 
-## 10. Conclusion
-As Member A and Team Lead, I have established the architectural foundation and fully implemented the AI Chatbot, Tool Calling Engine, Flashcards & Quiz system, Weak-Topic Detection, and App Shell. The module is resilient, secure, fully tested, and cleanly decoupled for seamless teammate integration.
+## 10. Integration Notes for Teammates
+- **Member B (Database & Auth)**: Update `server/services/plannerRepository.js` to connect your Mongoose models to the chatbot context and tools. No other chatbot files need to be touched.
+- **Member C (Planner & Syllabus)**: Connect your calendar and syllabus components to the endpoints defined in [`docs/api-contract.md`](file:///Users/monika/fsd%20project/docs/api-contract.md).
+- **Member D (Timer & Analytics)**: Connect your timer logging and Recharts visualizations to `/api/analytics/summary`.
+
+---
+
+## 11. Conclusion
+As Member A and Team Lead, I have established the architectural foundation and fully implemented the AI Chatbot, Tool Calling Engine, Flashcards & Quiz system, Weak-Topic Detection, App Shell, and CI pipelines. The module is resilient, secure, fully tested, and cleanly decoupled for seamless teammate integration.

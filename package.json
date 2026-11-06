@@ -2,6 +2,7 @@
   "name": "studybuddy-root",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "concurrently -n \"SERVER,CLIENT\" -c \"blue,magenta\" \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
     "client": "npm run dev --prefix client",
