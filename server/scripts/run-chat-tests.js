@@ -13,8 +13,15 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import jwt from 'jsonwebtoken';
 import app from '../app.js';
 import { setGeminiCaller, resetGeminiCaller } from '../services/chatbotService.js';
+
+const testToken = jwt.sign(
+  { userId: 'test_student_chat_runner', email: 'chatrunner@example.com' },
+  process.env.JWT_SECRET || 'studybuddy_secret_jwt_fallback_key_2026',
+  { expiresIn: '1d' }
+);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,6 +52,7 @@ async function sendRequest(baseUrl, { method = 'POST', endpoint = '/api/chat', b
     method,
     headers: {
       'Content-Type': 'application/json',
+      Authorization: `Bearer ${testToken}`,
       ...headers,
     },
   };

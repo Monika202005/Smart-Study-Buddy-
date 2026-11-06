@@ -6,7 +6,7 @@ import {
   rescheduleOverdue,
   getSubjects,
 } from './plannerRepository.js';
-import FlashcardQuizModel, { memoryFlashcards } from '../models/FlashcardQuiz.js';
+import FlashcardQuizModel from '../models/FlashcardQuiz.js';
 import { getDBStatus } from '../config/db.js';
 import { validateToolArguments } from './toolValidator.js';
 
@@ -380,8 +380,7 @@ export async function executeTool(toolName, args = {}, userId = 'default_student
       // Real LLM-backed generator with schema validation and fallback
       const generatedRawCards = await generateCardsWithLLM(topic, subject, count);
 
-      const savedCards = generatedRawCards.map((c, idx) => ({
-        _id: `fc_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+      const cardsToInsert = generatedRawCards.map((c) => ({
         userId,
         subjectId: 'cs_dynamic',
         subjectName: subject,
@@ -396,16 +395,17 @@ export async function executeTool(toolName, args = {}, userId = 'default_student
         createdAt: new Date(),
       }));
 
-      // Save to memory store
-      savedCards.forEach((c) => memoryFlashcards.push(c));
-
-      // Save to MongoDB if connected
-      if (getDBStatus().connected) {
-        try {
-          await FlashcardQuizModel.insertMany(savedCards);
-        } catch (dbErr) {
-          console.warn('Could not persist flashcards to MongoDB:', dbErr.message);
-        }
+      let savedCards = [];
+      try {
+        const inserted = await FlashcardQuizModel.insertMany(cardsToInsert);
+        savedCards = inserted.map((doc) => ({
+          ...doc.toObject(),
+          id: doc._id.toString(),
+          _id: doc._id.toString(),
+        }));
+      } catch (dbErr) {
+        console.warn('Could not persist flashcards to MongoDB:', dbErr.message);
+        savedCards = cardsToInsert;
       }
 
       return {

@@ -2,31 +2,53 @@ import mongoose from 'mongoose';
 
 let isConnected = false;
 
-export async function connectDB() {
-  const uri = process.env.MONGODB_URI;
+export async function connectDB(customUri) {
+  // Use customUri if explicitly provided (e.g. from mongodb-memory-server in tests)
+  const uri = customUri || (process.env.NODE_ENV === 'test' ? process.env.TEST_MONGODB_URI : process.env.MONGODB_URI);
+
+  if (process.env.NODE_ENV !== 'test') {
+    if (!process.env.MONGODB_URI) {
+      throw new Error('FATAL: MONGODB_URI is not defined in environment.');
+    }
+    if (!process.env.JWT_SECRET) {
+      throw new Error('FATAL: JWT_SECRET is not defined in environment.');
+    }
+  }
 
   if (!uri) {
-    console.log('ℹ️ No MONGODB_URI provided in .env. Running with fast in-memory hybrid store for local development & testing.');
-    return false;
+    if (process.env.NODE_ENV === 'test') {
+      return false;
+    }
+    throw new Error('FATAL: Database connection URI is missing.');
   }
 
   try {
     const conn = await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 3000,
+      serverSelectionTimeoutMS: 5000,
     });
     isConnected = true;
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    if (process.env.NODE_ENV !== 'test') {
+      console.log(`✅ MongoDB Connected: ${conn.connection.host} (database: ${conn.connection.name})`);
+    }
     return true;
   } catch (error) {
-    console.warn(`⚠️ MongoDB connection failed (${error.message}). Falling back to seamless in-memory store for offline development.`);
     isConnected = false;
-    return false;
+    console.error(`❌ MongoDB connection error: ${error.message}`);
+    throw error;
+  }
+}
+
+export async function disconnectDB() {
+  if (isConnected || mongoose.connection.readyState !== 0) {
+    await mongoose.disconnect();
+    isConnected = false;
   }
 }
 
 export function getDBStatus() {
+  const ready = mongoose.connection.readyState === 1;
   return {
-    connected: isConnected,
-    mode: isConnected ? 'MongoDB Atlas' : 'In-Memory Mock Store',
+    connected: ready,
+    mode: ready ? 'MongoDB Atlas' : 'Disconnected',
   };
 }

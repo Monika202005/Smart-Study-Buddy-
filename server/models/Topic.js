@@ -21,7 +21,7 @@ const topicSchema = new mongoose.Schema(
     difficulty: {
       type: Number,
       required: true,
-      enum: [1, 2, 3], // 1 = easy, 2 = medium, 3 = hard
+      enum: [1, 2, 3],
       default: 2,
     },
     status: {
@@ -43,7 +43,6 @@ const topicSchema = new mongoose.Schema(
   }
 );
 
-// Performance compound indexes
 topicSchema.index({ userId: 1, subjectId: 1, status: 1 });
 
 const TopicModel = mongoose.models.Topic || mongoose.model('Topic', topicSchema);

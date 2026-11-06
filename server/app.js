@@ -16,6 +16,7 @@ import plannerRoutes from './routes/plannerRoutes.js';
 import sessionRoutes from './routes/sessionRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import reminderRoutes from './routes/reminderRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -87,6 +88,7 @@ app.use('/api/planner', plannerRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/reminders', reminderRoutes);
+app.use('/api/user', userRoutes);
 
 // Global 404 handler
 app.use((req, res) => {

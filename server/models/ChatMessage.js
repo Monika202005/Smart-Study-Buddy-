@@ -33,23 +33,7 @@ const chatMessageSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Fallback in-memory storage for development when Mongo is offline
-export const memoryChatMessages = [
-  {
-    _id: 'msg_init_1',
-    userId: 'default_student_1',
-    role: 'assistant',
-    content: "👋 Hello Monika! I'm **StudyBuddy AI**, your smart personal study tutor and planner assistant.\n\nI can help you:\n- 📖 Explain complex concepts simply with analogies\n- 📅 Tell you what to focus on today based on upcoming exams\n- 🔄 Reschedule missed tasks or create new study goals\n- 🧠 Quiz you or generate flashcards on any topic\n\nWhat would you like to review today?",
-    toolCalls: [],
-    createdAt: new Date(Date.now() - 3600000),
-  },
-];
+chatMessageSchema.index({ userId: 1, createdAt: 1 });
 
-let ChatMessageModel;
-try {
-  ChatMessageModel = mongoose.model('ChatMessage', chatMessageSchema);
-} catch (e) {
-  ChatMessageModel = mongoose.models.ChatMessage;
-}
-
+const ChatMessageModel = mongoose.models.ChatMessage || mongoose.model('ChatMessage', chatMessageSchema);
 export default ChatMessageModel;

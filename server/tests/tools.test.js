@@ -1,7 +1,7 @@
 import { executeTool } from '../services/chatbotTools.js';
 import { validateToolArguments, validateISODate } from '../services/toolValidator.js';
 import { getTodayTasks, getMissedTasks, addTask, rescheduleOverdue } from '../services/plannerRepository.js';
-import { memoryFlashcards } from '../models/FlashcardQuiz.js';
+import FlashcardQuizModel from '../models/FlashcardQuiz.js';
 
 describe('Tool Validation & Execution (TASK 2 & TASK 3)', () => {
   describe('Schema & Date Validation', () => {
@@ -140,7 +140,7 @@ describe('Tool Validation & Execution (TASK 2 & TASK 3)', () => {
 
     it('generates flashcards, validates schema, caps count, and saves to store for user', async () => {
       const testUser = 'user_flashcard_test';
-      const initialCount = memoryFlashcards.filter((f) => f.userId === testUser).length;
+      const initialCount = await FlashcardQuizModel.countDocuments({ userId: testUser });
 
       const result = await executeTool(
         'generate_flashcards',
@@ -154,7 +154,7 @@ describe('Tool Validation & Execution (TASK 2 & TASK 3)', () => {
       expect(result.flashcards[0].userId).toBe(testUser);
       expect(result.flashcards[0].options.length).toBeGreaterThanOrEqual(2);
 
-      const updatedCount = memoryFlashcards.filter((f) => f.userId === testUser).length;
+      const updatedCount = await FlashcardQuizModel.countDocuments({ userId: testUser });
       expect(updatedCount).toBe(initialCount + 2);
     });
   });

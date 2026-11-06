@@ -25,7 +25,7 @@ const subjectSchema = new mongoose.Schema(
     },
     examDate: {
       type: Date,
-      required: [true, 'Exam date is required'],
+      default: null,
       index: true,
     },
   },
@@ -34,7 +34,6 @@ const subjectSchema = new mongoose.Schema(
   }
 );
 
-// Performance index
 subjectSchema.index({ userId: 1, examDate: 1 });
 
 const SubjectModel = mongoose.models.Subject || mongoose.model('Subject', subjectSchema);

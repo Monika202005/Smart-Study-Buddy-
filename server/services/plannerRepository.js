@@ -1,78 +1,27 @@
 /**
  * Planner Data Access Repository
  *
- * Central data access layer abstracting student tasks, subjects, and exams.
- * Currently backed by mockPlannerStore.
- * Member B can swap in Mongoose models by modifying this file without touching
- * chatbotService or chatbotTools.
+ * Real Mongoose-backed data access layer for student tasks, subjects, and exams.
+ * Queries Mongoose models strictly scoped by userId.
  */
 
-import {
-  mockUser,
-  mockSubjects,
-  mockTasks,
-  addTask as storeAddTask,
-} from '../models/mockPlannerStore.js';
+import UserModel from '../models/User.js';
+import SubjectModel from '../models/Subject.js';
+import TopicModel from '../models/Topic.js';
+import TaskModel from '../models/Task.js';
+import { toDateString } from './analyticsService.js';
 
 /**
- * Fetch all tasks scheduled for today for a given user
- */
-export async function getTodayTasks(userId = 'default_student_1') {
-  const todayStr = new Date().toISOString().split('T')[0];
-  return mockTasks.filter(
-    (t) => (t.userId === userId || !t.userId) && t.scheduledDate === todayStr
-  );
-}
-
-/**
- * Fetch all incomplete tasks with a scheduledDate prior to today for a given user
- */
-export async function getMissedTasks(userId = 'default_student_1') {
-  const todayStr = new Date().toISOString().split('T')[0];
-  return mockTasks.filter(
-    (t) => (t.userId === userId || !t.userId) && !t.completed && t.scheduledDate < todayStr
-  );
-}
-
-/**
- * Add a new study task for a given user
- */
-export async function addTask(userId = 'default_student_1', taskData = {}) {
-  const newTask = storeAddTask({
-    ...taskData,
-    userId,
-  });
-  return newTask;
-}
-
-/**
- * Reschedule all overdue/missed tasks for a given user forward to today/tomorrow
- */
-export async function rescheduleOverdue(userId = 'default_student_1') {
-  const todayStr = new Date().toISOString().split('T')[0];
-  const tomorrowStr = new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-  const missed = await getMissedTasks(userId);
-
-  missed.forEach((t) => {
-    t.scheduledDate = todayStr;
-    t.dueDate = tomorrowStr;
-  });
-
-  return {
-    rescheduledCount: missed.length,
-    tasks: missed,
-  };
-}
-
-/**
- * Calculates the difference in calendar days between targetDateStr and today at local midnight.
- * Avoids UTC offset drift and 24h truncation errors (e.g. exam tomorrow never reports 0 days).
+ * Calculates calendar days difference between targetDateStr and today.
  */
 export function calculateCalendarDaysLeft(targetDateStr) {
   if (!targetDateStr) return 0;
-  const parts = targetDateStr.includes('T')
-    ? targetDateStr.split('T')[0].split('-').map(Number)
-    : targetDateStr.split('-').map(Number);
+  const parts = (typeof targetDateStr === 'string' && targetDateStr.includes('T')
+    ? targetDateStr.split('T')[0]
+    : typeof targetDateStr === 'string'
+    ? targetDateStr
+    : new Date(targetDateStr).toISOString().split('T')[0]
+  ).split('-').map(Number);
 
   const [year, month, day] = parts;
   const targetMidnight = new Date(year, month - 1, day, 0, 0, 0, 0);
@@ -84,32 +33,156 @@ export function calculateCalendarDaysLeft(targetDateStr) {
 }
 
 /**
+ * Fetch user profile
+ */
+export async function getUser(userId) {
+  if (!userId) return null;
+  const user = await UserModel.findById(userId).lean();
+  if (!user) return null;
+  return {
+    id: user._id.toString(),
+    _id: user._id.toString(),
+    name: user.name,
+    email: user.email,
+    dailyHours: user.dailyHours || 4,
+    theme: user.theme || 'dark',
+  };
+}
+
+/**
+ * Fetch subjects with nested topics for a user
+ */
+export async function getSubjects(userId) {
+  if (!userId) return [];
+  const [subjects, topics] = await Promise.all([
+    SubjectModel.find({ userId }).sort({ examDate: 1 }).lean(),
+    TopicModel.find({ userId }).lean(),
+  ]);
+
+  return subjects.map((s) => ({
+    ...s,
+    id: s._id.toString(),
+    _id: s._id.toString(),
+    topics: topics
+      .filter((t) => t.subjectId === s._id.toString() || t.subjectId === s.code)
+      .map((t) => ({
+        ...t,
+        id: t._id.toString(),
+        _id: t._id.toString(),
+      })),
+  }));
+}
+
+/**
+ * Fetch all tasks scheduled for today for a given user
+ */
+export async function getTodayTasks(userId) {
+  if (!userId) return [];
+  const todayStr = toDateString(new Date());
+  const tasks = await TaskModel.find({ userId, scheduledDate: todayStr }).lean();
+  return tasks.map((t) => ({
+    ...t,
+    id: t._id.toString(),
+    _id: t._id.toString(),
+  }));
+}
+
+/**
+ * Fetch all incomplete tasks with a scheduledDate prior to today for a given user
+ */
+export async function getMissedTasks(userId) {
+  if (!userId) return [];
+  const todayStr = toDateString(new Date());
+  const tasks = await TaskModel.find({
+    userId,
+    completed: false,
+    scheduledDate: { $lt: todayStr },
+  }).lean();
+
+  return tasks.map((t) => ({
+    ...t,
+    id: t._id.toString(),
+    _id: t._id.toString(),
+  }));
+}
+
+/**
+ * Add a new study task for a given user
+ */
+export async function addTask(userId, taskData = {}) {
+  const doc = await TaskModel.create({
+    userId,
+    subjectId: taskData.subjectId || 'general',
+    subjectName: taskData.subjectName || taskData.subject || 'General Study',
+    topicId: taskData.topicId || null,
+    title: taskData.title,
+    type: taskData.type || 'study',
+    dueDate: taskData.dueDate || toDateString(new Date()),
+    scheduledDate: taskData.scheduledDate || toDateString(new Date()),
+    durationHours: Number(taskData.durationHours) || 2,
+    priority: taskData.priority || 'medium',
+    completed: false,
+    completedAt: null,
+    isRescheduled: false,
+  });
+
+  return {
+    ...doc.toObject(),
+    id: doc._id.toString(),
+    _id: doc._id.toString(),
+  };
+}
+
+/**
+ * Reschedule all overdue/missed tasks for a given user forward to today/tomorrow
+ */
+export async function rescheduleOverdue(userId) {
+  if (!userId) return { rescheduledCount: 0, tasks: [] };
+  const todayStr = toDateString(new Date());
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = toDateString(tomorrow);
+
+  const missed = await TaskModel.find({
+    userId,
+    completed: false,
+    scheduledDate: { $lt: todayStr },
+  });
+
+  const updatedTasks = [];
+  for (const t of missed) {
+    t.scheduledDate = todayStr;
+    t.dueDate = tomorrowStr;
+    t.isRescheduled = true;
+    await t.save();
+    updatedTasks.push({
+      ...t.toObject(),
+      id: t._id.toString(),
+      _id: t._id.toString(),
+    });
+  }
+
+  return {
+    rescheduledCount: updatedTasks.length,
+    tasks: updatedTasks,
+  };
+}
+
+/**
  * Fetch upcoming exams within a specified horizon (default: 14 days)
  */
-export async function getExams(userId = 'default_student_1', days = 14) {
-  return mockSubjects
+export async function getExams(userId, days = 14) {
+  if (!userId) return [];
+  const subjects = await SubjectModel.find({ userId, examDate: { $ne: null } }).lean();
+
+  return subjects
     .map((s) => {
       const daysLeft = calculateCalendarDaysLeft(s.examDate);
       return {
         subject: s.name,
-        examDate: s.examDate,
+        examDate: toDateString(s.examDate),
         daysLeft,
       };
     })
     .filter((s) => s.daysLeft >= 0 && s.daysLeft <= days);
 }
-
-/**
- * Fetch student profile
- */
-export async function getUser(userId = 'default_student_1') {
-  return mockUser;
-}
-
-/**
- * Fetch enrolled subjects for student
- */
-export async function getSubjects(userId = 'default_student_1') {
-  return mockSubjects;
-}
-
