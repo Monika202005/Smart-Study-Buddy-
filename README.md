@@ -134,22 +134,3 @@ npm run build
 3. **LLM Key Optionality**: If no `GEMINI_API_KEY` is configured, StudyBuddy seamlessly invokes the local smart study tutor engine. No 500 errors occur, but live generative reasoning requires a valid Gemini API key.
 
 ---
-
-## 🔌 Integration Notes for Teammates
-
-### For Member B (Backend Core & Database):
-- **Swapping MongoDB for Mock Store**: You do **NOT** need to edit `chatbotService.js` or `chatbotTools.js`. Simply update **`server/services/plannerRepository.js`** to replace `mockPlannerStore` calls with your Mongoose models:
-  - `getTodayTasks(userId)`
-  - `getMissedTasks(userId)`
-  - `addTask(userId, taskData)`
-  - `rescheduleOverdue(userId)`
-  - `getExams(userId, days)`
-- **Authentication**: Connect your JWT verification inside `server/middleware/authMiddleware.js`. Set `req.user = { userId: decoded.id, ... }`. The chatbot and quiz controllers will automatically inherit real user IDs.
-
-### For Member C (Planner UI & Subjects):
-- Wire your drag-and-drop calendar and subject creation forms to the endpoints defined in [`docs/api-contract.md`](file:///Users/monika/fsd%20project/docs/api-contract.md).
-- Replace `TeammateModuleStub` on `/planner` and `/subjects` with your production views.
-
-### For Member D (Dashboard & Analytics):
-- Replace `TeammateModuleStub` on `/timer` and `/analytics` with your Pomodoro focus timer and Recharts analytics dashboards.
-- Connect to `/api/analytics/summary` as specified in the API contract.
