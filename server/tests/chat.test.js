@@ -114,6 +114,17 @@ describe('Chat API Endpoint (/api/chat)', () => {
   });
 
   describe('Rate Limiter', () => {
+    beforeAll(() => {
+      // Fast mock caller so 35 requests do not hit external network
+      setGeminiCaller(async () => ({
+        candidates: [{ content: { parts: [{ text: 'Mock reply' }] } }],
+      }));
+    });
+
+    afterAll(() => {
+      resetGeminiCaller();
+    });
+
     it('returns 429 when rate limit (30 requests/min) is exceeded', async () => {
       let lastRes = null;
       // Send 35 requests quickly to trip rate limiter
