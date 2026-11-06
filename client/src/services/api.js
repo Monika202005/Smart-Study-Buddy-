@@ -252,16 +252,18 @@ export async function rescheduleTaskApi(taskId, scheduledDate) {
   return await res.json();
 }
 
-export async function triggerGeneratePlanApi() {
+export async function triggerGeneratePlanApi(options = { commit: true }) {
   const res = await apiFetch('/planner/generate', {
     method: 'POST',
+    body: JSON.stringify(options),
   });
   return await res.json();
 }
 
-export async function triggerRescheduleMissedApi() {
+export async function triggerRescheduleMissedApi(options = { commit: true }) {
   const res = await apiFetch('/planner/reschedule-missed', {
     method: 'POST',
+    body: JSON.stringify(options),
   });
   return await res.json();
 }
