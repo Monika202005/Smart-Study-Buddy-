@@ -187,7 +187,7 @@ export default function LandingPage() {
               Sign In
             </Link>
             <Link
-              to="/login"
+              to="/signup"
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-semibold shadow-lg shadow-indigo-600/30 transition-all hover:scale-105"
             >
               <span>Get Started</span>
@@ -378,7 +378,7 @@ export default function LandingPage() {
               to the finish line.
             </p>
             <Link
-              to="/login"
+              to="/signup"
               className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/30 transition-all hover:scale-105"
             >
               <Sparkles className="w-4 h-4" />
@@ -395,12 +395,12 @@ export default function LandingPage() {
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-indigo-400" />
             <span className="font-semibold text-slate-400">StudyBuddy</span>
-            <span>· Full Stack Team of 4 · 6-Week Project</span>
+            <span>· Smart Study Planner & AI Companion</span>
           </div>
           <div className="flex items-center gap-6">
-            <Link to="/" className="hover:text-slate-300 transition-colors">Dashboard</Link>
+            <Link to="/app/dashboard" className="hover:text-slate-300 transition-colors">Workspace</Link>
             <Link to="/login" className="hover:text-slate-300 transition-colors">Sign In</Link>
-            <Link to="/chat" className="hover:text-slate-300 transition-colors">AI Tutor</Link>
+            <Link to="/signup" className="hover:text-slate-300 transition-colors">Sign Up</Link>
           </div>
         </div>
       </footer>

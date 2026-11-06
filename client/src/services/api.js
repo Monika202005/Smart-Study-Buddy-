@@ -9,10 +9,10 @@ const BASE_URL = '/api';
  * Helper to get authentication headers from local storage.
  */
 export function getAuthHeaders() {
-  const token = localStorage.getItem('studybuddy_token') || 'mock_jwt_token_studybuddy_monika';
+  const token = localStorage.getItem('studybuddy_token');
   return {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
 
@@ -32,7 +32,7 @@ export function handleUnauthorized() {
  * Standardized fetch wrapper with JWT attachment and 401 session clearance.
  */
 export async function apiFetch(url, options = {}) {
-  const token = localStorage.getItem('studybuddy_token') || 'mock_jwt_token_studybuddy_monika';
+  const token = localStorage.getItem('studybuddy_token');
   const base =
     typeof window !== 'undefined' && window.location?.origin && window.location.origin !== 'null'
       ? window.location.origin
@@ -162,6 +162,52 @@ export async function registerUserApi(userData) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Registration failed. Please try again.');
   }
+  return await res.json();
+}
+
+export async function fetchCurrentUserApi() {
+  const res = await apiFetch('/auth/me');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to fetch current user.');
+  }
+  return await res.json();
+}
+
+export async function updateUserProfileApi(profileData) {
+  const res = await apiFetch('/user/profile', {
+    method: 'PUT',
+    body: JSON.stringify(profileData),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to update profile.');
+  }
+  return await res.json();
+}
+
+export async function logStudySessionApi(sessionData) {
+  const res = await apiFetch('/sessions', {
+    method: 'POST',
+    body: JSON.stringify(sessionData),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to log study session.');
+  }
+  return await res.json();
+}
+
+export async function fetchStudySessionsApi() {
+  const res = await apiFetch('/sessions');
+  return await res.json();
+}
+
+export async function deleteTaskApi(taskId) {
+  const res = await apiFetch(`/tasks/${taskId}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error('Failed to delete task');
   return await res.json();
 }
 

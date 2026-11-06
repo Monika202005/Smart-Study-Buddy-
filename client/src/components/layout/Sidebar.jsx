@@ -11,8 +11,6 @@ import {
   Settings,
   Sparkles,
   ChevronRight,
-  LogIn,
-  Home,
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { calculateCalendarDaysLeft, formatDaysLeftLabel } from '../../utils/dateUtils';
@@ -26,72 +24,56 @@ export default function Sidebar({ mobileOpen, onClose }) {
       ...s,
       daysLeft: calculateCalendarDaysLeft(s.examDate),
     }))
+    .filter((s) => s.daysLeft >= 0)
     .sort((a, b) => a.daysLeft - b.daysLeft);
 
   const nearestExam = sortedSubjects[0];
-  const targetDaysLabel = nearestExam
-    ? formatDaysLeftLabel(nearestExam.daysLeft)
-    : '5 Days';
-  const targetExamTitle = nearestExam
-    ? nearestExam.name
-    : 'CS301: Data Structures';
-  const targetExamSubtext = nearestExam?.topics?.[0]?.name || 'Trees, Graphs, & DP';
+  const targetDaysLabel = nearestExam ? formatDaysLeftLabel(nearestExam.daysLeft) : '--';
+  const targetExamTitle = nearestExam ? nearestExam.name : 'No upcoming exams';
+  const targetExamSubtext = nearestExam?.topics?.[0]?.name || (nearestExam ? 'Preparing syllabus' : 'Add subjects to track deadlines');
 
   const navItems = [
     {
-      to: '/',
+      to: '/app/dashboard',
       label: 'Dashboard',
       icon: LayoutDashboard,
     },
     {
-      to: '/chat',
+      to: '/app/chat',
       label: 'AI Study Tutor',
       icon: Bot,
       highlight: true,
     },
     {
-      to: '/flashcards',
+      to: '/app/flashcards',
       label: 'Flashcards & Quiz',
       icon: BrainCircuit,
       highlight: true,
     },
     {
-      to: '/planner',
+      to: '/app/planner',
       label: 'Smart Planner',
       icon: CalendarDays,
     },
     {
-      to: '/subjects',
+      to: '/app/subjects',
       label: 'Subjects & Topics',
       icon: BookOpen,
     },
     {
-      to: '/timer',
+      to: '/app/timer',
       label: 'Pomodoro Timer',
       icon: Timer,
     },
     {
-      to: '/analytics',
+      to: '/app/analytics',
       label: 'Analytics & Streaks',
       icon: BarChart3,
     },
     {
-      to: '/settings',
+      to: '/app/settings',
       label: 'Settings & Profile',
       icon: Settings,
-    },
-    {
-      to: '/login',
-      label: 'Login / Sign Up',
-      icon: LogIn,
-    },
-    {
-      to: '/landing',
-      label: 'Landing Page',
-      icon: Home,
-      badge: '✅ Member C',
-      badgeColor: 'bg-sky-500/15 text-sky-300 border border-sky-500/25 font-bold',
-      highlight: true,
     },
   ];
 
@@ -101,33 +83,34 @@ export default function Sidebar({ mobileOpen, onClose }) {
       {mobileOpen && (
         <div
           onClick={onClose}
-          className="fixed inset-0 z-40 bg-slate-950/80 backdrop-blur-sm lg:hidden transition-opacity"
+          className="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-sm lg:hidden transition-opacity"
         />
       )}
 
-      {/* Sidebar Container */}
+      {/* Main Sidebar */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 w-64 border-r border-slate-800/80 bg-slate-900/95 flex flex-col justify-between transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-40 w-64 border-r border-slate-800/80 bg-slate-900/95 backdrop-blur-xl flex flex-col justify-between transition-transform duration-300 ease-in-out lg:translate-x-0 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex flex-col h-full overflow-y-auto p-4">
-          {/* Header Brand */}
-          <div className="flex items-center justify-between pb-5 mb-3 border-b border-slate-800/80">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/30">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <span className="font-bold text-base tracking-tight text-white">StudyBuddy</span>
+        {/* Top: Logo & Nav items */}
+        <div className="flex-1 overflow-y-auto px-4 py-5 space-y-6">
+          {/* Logo brand */}
+          <div className="flex items-center gap-3 px-2">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-600/30 text-white font-bold">
+              <Sparkles className="w-5 h-5 text-indigo-100" />
+            </div>
+            <div>
+              <span className="font-extrabold text-base tracking-tight text-white block">StudyBuddy</span>
+              <span className="text-[10px] text-indigo-400 font-semibold uppercase tracking-wider block">Workspace</span>
             </div>
           </div>
 
-          {/* Navigation Links */}
-          <nav className="space-y-1">
-            <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+          {/* Navigation links */}
+          <div className="space-y-1">
+            <p className="px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
               Study Modules
-            </div>
-
+            </p>
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -136,54 +119,43 @@ export default function Sidebar({ mobileOpen, onClose }) {
                   to={item.to}
                   onClick={onClose}
                   className={({ isActive }) =>
-                    `flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all group ${
+                    `flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all group ${
                       isActive
-                        ? 'bg-gradient-to-r from-indigo-600/25 to-purple-600/15 text-indigo-200 border border-indigo-500/30 shadow-sm'
+                        ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md shadow-indigo-600/25'
                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
                     }`
                   }
                 >
-                  <div className="flex items-center gap-3">
-                    <Icon className="w-4 h-4 transition-transform group-hover:scale-110" />
-                    <span>{item.label}</span>
-                  </div>
-                  {item.badge && (
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${item.badgeColor}`}>
-                      {item.badge}
-                    </span>
-                  )}
+                  <Icon className="w-4 h-4 shrink-0 transition-transform group-hover:scale-110" />
+                  <span className="flex-1">{item.label}</span>
                 </NavLink>
               );
             })}
-          </nav>
+          </div>
+        </div>
 
-          {/* Spacer */}
-          <div className="my-auto" />
-
-          {/* Exam Countdown Widget */}
-          <div className="mt-4 p-3.5 rounded-2xl bg-gradient-to-br from-indigo-950/60 via-slate-900 to-purple-950/50 border border-indigo-500/30 shadow-lg">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-indigo-300 uppercase tracking-wide">
-                Target Exam
-              </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+        {/* Bottom: Exam countdown widget & user status */}
+        <div className="p-4 border-t border-slate-800/80 bg-slate-900/60">
+          <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-950/60 via-slate-900 to-purple-950/40 border border-indigo-500/20 shadow-inner">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Target Exam</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
                 {targetDaysLabel}
               </span>
             </div>
             <p className="text-xs font-semibold text-white truncate">{targetExamTitle}</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">{targetExamSubtext}</p>
-
-            {/* Micro Progress bar */}
-            <div className="w-full bg-slate-800 rounded-full h-1.5 my-2.5 overflow-hidden">
-              <div className="bg-gradient-to-r from-indigo-500 to-purple-500 h-1.5 rounded-full w-[65%]" />
-            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5 truncate">{targetExamSubtext}</p>
 
             <button
               onClick={() => {
                 if (onClose) onClose();
-                openChatWithPrompt('Explain AVL Tree rotations with a simple analogy, and quiz me!');
+                openChatWithPrompt(
+                  nearestExam
+                    ? `Review key exam preparation concepts for ${nearestExam.name}`
+                    : 'Help me plan my study schedule and add subjects!'
+                );
               }}
-              className="w-full mt-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold transition-all shadow-md shadow-indigo-600/30"
+              className="w-full mt-3 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold transition-all shadow-md shadow-indigo-600/30 cursor-pointer"
             >
               <Bot className="w-3.5 h-3.5" />
               <span>Review with AI Tutor</span>
@@ -192,9 +164,9 @@ export default function Sidebar({ mobileOpen, onClose }) {
           </div>
 
           {/* User Status footer */}
-          <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500">
-            <span>Logged in: {user?.name || 'Student'}</span>
-            <span className="text-emerald-400 flex items-center gap-1">
+          <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+            <span className="truncate max-w-[130px] font-medium text-slate-300">{user?.name || 'Student'}</span>
+            <span className="text-emerald-400 flex items-center gap-1 shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               Online
             </span>
