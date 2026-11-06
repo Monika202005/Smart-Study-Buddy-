@@ -1,6 +1,6 @@
 # 🎓 StudyBuddy — Smart Study Planner & AI Tutor
 
-> Full Stack Web Development Project | Team of 4 | 6-Week Plan  
+> Full Stack Web Development Project | Team of 4 |
 > **Lead by Member A (Monika Sharma)**: AI Chatbot, Tool Actions, Flashcards & Quiz Engine, App Shell & Integration.
 
 ---

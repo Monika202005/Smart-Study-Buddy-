@@ -1,6 +1,9 @@
-const { spawn } = require('child_process');
-const path = require('path');
+import { spawn } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const rootDir = __dirname;
 
 console.log('🚀 Starting StudyBuddy backend server (port 5001)...');
@@ -36,4 +39,3 @@ process.on('SIGTERM', () => {
   client.kill();
   process.exit();
 });
-
