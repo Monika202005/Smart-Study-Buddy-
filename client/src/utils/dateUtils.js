@@ -29,3 +29,4 @@ export function formatDaysLeftLabel(daysLeft) {
   if (daysLeft === 1) return 'Tomorrow';
   return `In ${daysLeft} Days`;
 }
+

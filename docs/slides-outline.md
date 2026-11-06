@@ -107,3 +107,4 @@
   - Multi-modal syllabus ingestion (RAG chunking of lecture PDF slides).
   - Voice-enabled tutoring sessions via Gemini Live API.
   - Full SuperMemo (SM-2) spaced repetition interval scheduling.
+

@@ -121,3 +121,4 @@ Member B can replace the in-memory store with MongoDB in one step:
 2. Replace `mockTasks.filter(...)` with `await TaskModel.find({ userId })`.
 3. Replace `mockSubjects.map(...)` with `await SubjectModel.find({ userId })`.
 4. Zero changes will be required in `chatbotService.js`, `chatbotTools.js`, `chatbotContext.js`, or the frontend!
+

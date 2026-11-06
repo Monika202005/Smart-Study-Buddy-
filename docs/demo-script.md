@@ -59,3 +59,4 @@ If the evaluator has limited time:
    - Click card to flip in 3D.
    - Click **"Interactive Quiz Mode"**, answer a question, show instant feedback and weak-topic detection.
    - Conclude: Mention repository architecture and clean test suite (31 server tests + 21 chat runner cases + 4 client smoke tests all 100% passing).
+

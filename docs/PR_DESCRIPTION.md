@@ -135,3 +135,4 @@ Per team lead responsibilities, this PR intentionally **does NOT** implement tea
 ### How Teammates Integrate:
 - **Member B:** Replace the in-memory arrays in `server/services/plannerRepository.js` with `await TaskModel.find({ userId })`, etc.
 - **Member C & D:** Replace stub routes in `server/app.js` and render full UI components inside their respective pages (`PlannerPage.jsx`, `SubjectsPage.jsx`, `TimerPage.jsx`, `AnalyticsPage.jsx`).
+

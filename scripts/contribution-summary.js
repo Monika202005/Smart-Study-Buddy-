@@ -94,3 +94,4 @@ const data = getGitContributions();
 const md = generateMarkdown(data);
 fs.writeFileSync(OUTPUT_FILE, md, 'utf-8');
 console.log(`✅ Contribution summary successfully written to: ${OUTPUT_FILE}`);
+

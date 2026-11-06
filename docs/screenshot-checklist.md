@@ -33,3 +33,4 @@ Save exported screenshots to `docs/screenshots/`:
 - `08_chat_error_retry.png`
 - `09_mobile_responsive_view.png`
 - `10_teammate_stub_contract.png`
+

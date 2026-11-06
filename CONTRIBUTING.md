@@ -76,3 +76,4 @@ Format: `<type>(<optional scope>): <description>`
 - **Member A (Lead)**: Chatbot, Tool Calling, Flashcard & Quiz Engine, App Shell. Integration point is `server/services/plannerRepository.js` and `docs/api-contract.md`.
 - **Member B**: Replaces mock repository implementations in `plannerRepository.js` with live Mongoose queries once `User`, `Subject`, and `Task` schemas land.
 - **Member C & D**: Replace the stub routes in `server/app.js` and integrate their frontend pages into the shared responsive `AppShell`.
+

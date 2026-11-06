@@ -63,3 +63,4 @@ Every upstream request to Google Gemini is governed by the following policy:
 
 ### D. Single Integration Point (`plannerRepository.js`)
 To decouple Member 1's chatbot from teammate models, all database and planner queries route through [`server/services/plannerRepository.js`](file:///Users/monika/fsd%20project/server/services/plannerRepository.js). When Member B completes the MongoDB Mongoose models, they can swap in database queries in this single repository without touching any chatbot or tool execution code.
+
