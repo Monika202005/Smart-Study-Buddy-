@@ -1,5 +1,4 @@
-import FlashcardQuizModel, { memoryFlashcards } from '../models/FlashcardQuiz.js';
-import { getDBStatus } from '../config/db.js';
+import FlashcardQuizModel from '../models/FlashcardQuiz.js';
 
 /**
  * POST /api/quiz/generate
@@ -8,7 +7,10 @@ import { getDBStatus } from '../config/db.js';
 export async function generateQuiz(req, res) {
   try {
     const { topic = 'General CS', subject = 'Computer Science', count = 3 } = req.body || {};
-    const userId = req.user?.userId || 'default_student_1';
+    const userId = req.user?.userId || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
 
     const topicClean = String(topic).trim().slice(0, 100);
     const subjectClean = String(subject).trim().slice(0, 100);
@@ -53,8 +55,7 @@ export async function generateQuiz(req, res) {
       },
     ];
 
-    const generatedCards = samplePool.slice(0, validCount).map((item, idx) => ({
-      _id: `card_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+    const cardsToInsert = samplePool.slice(0, validCount).map((item) => ({
       userId,
       subjectId: 'cs_dynamic',
       subjectName: subjectClean,
@@ -66,19 +67,14 @@ export async function generateQuiz(req, res) {
       explanation: item.explanation,
       lastResult: 'untested',
       difficulty: item.difficulty,
-      createdAt: new Date(),
     }));
 
-    // Add to memory
-    generatedCards.forEach((c) => memoryFlashcards.push(c));
-
-    if (getDBStatus().connected) {
-      try {
-        await FlashcardQuizModel.insertMany(generatedCards);
-      } catch (err) {
-        console.warn('Could not save generated quiz to MongoDB:', err.message);
-      }
-    }
+    const inserted = await FlashcardQuizModel.insertMany(cardsToInsert);
+    const generatedCards = inserted.map((doc) => ({
+      ...doc.toObject(),
+      id: doc._id.toString(),
+      _id: doc._id.toString(),
+    }));
 
     return res.status(200).json({
       success: true,
@@ -99,32 +95,29 @@ export async function generateQuiz(req, res) {
  */
 export async function recordQuizResult(req, res) {
   try {
-    const { cardId, result, selectedOption } = req.body || {};
-    const userId = req.user?.userId || 'default_student_1';
+    const { cardId, result } = req.body || {};
+    const userId = req.user?.userId || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
 
     if (!cardId || !['correct', 'incorrect'].includes(result)) {
       return res.status(400).json({ error: 'Valid cardId and result (correct/incorrect) are required.' });
     }
 
-    // Update in memory store for this user
-    const card = memoryFlashcards.find((c) => c._id === cardId && (c.userId === userId || !c.userId));
-    if (card) {
-      card.lastResult = result;
-      card.lastAttemptedAt = new Date();
-    }
+    const card = await FlashcardQuizModel.findOneAndUpdate(
+      { _id: cardId, userId },
+      {
+        $set: {
+          lastResult: result,
+          lastAttemptedAt: new Date(),
+        },
+      },
+      { new: true }
+    );
 
-    if (getDBStatus().connected) {
-      try {
-        await FlashcardQuizModel.findOneAndUpdate(
-          { _id: cardId, userId },
-          {
-            lastResult: result,
-            lastAttemptedAt: new Date(),
-          }
-        );
-      } catch (e) {
-        // silent
-      }
+    if (!card) {
+      return res.status(404).json({ success: false, error: 'Flashcard not found.' });
     }
 
     return res.status(200).json({
@@ -132,9 +125,14 @@ export async function recordQuizResult(req, res) {
       cardId,
       result,
       message: result === 'correct' ? '🎉 Great job! Marked as mastered.' : '📌 Added to your Weak Topics review list.',
-      card,
+      card: {
+        ...card.toObject(),
+        id: card._id.toString(),
+        _id: card._id.toString(),
+      },
     });
   } catch (error) {
+    console.error('Quiz result recording error:', error);
     return res.status(500).json({ success: false, error: 'Could not record quiz result.' });
   }
 }
@@ -145,20 +143,24 @@ export async function recordQuizResult(req, res) {
  */
 export async function getFlashcards(req, res) {
   try {
-    const userId = req.user?.userId || 'default_student_1';
+    const userId = req.user?.userId || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
     const { subjectId, topicId, status } = req.query || {};
 
-    let cards = memoryFlashcards.filter((c) => c.userId === userId || !c.userId);
+    const query = { userId };
+    if (subjectId) query.subjectId = subjectId;
+    if (topicId) query.topicId = topicId;
+    if (status) query.lastResult = status;
 
-    if (subjectId) {
-      cards = cards.filter((c) => c.subjectId === subjectId);
-    }
-    if (topicId) {
-      cards = cards.filter((c) => c.topicId === topicId);
-    }
-    if (status) {
-      cards = cards.filter((c) => c.lastResult === status);
-    }
+    const dbCards = await FlashcardQuizModel.find(query).sort({ createdAt: -1 }).lean();
+    const cards = dbCards.map((c) => ({
+      ...c,
+      id: c._id.toString(),
+      _id: c._id.toString(),
+    }));
 
     return res.status(200).json({
       success: true,
@@ -166,6 +168,7 @@ export async function getFlashcards(req, res) {
       cards,
     });
   } catch (error) {
+    console.error('Error fetching flashcards:', error);
     return res.status(500).json({ success: false, error: 'Could not load flashcards.' });
   }
 }
@@ -176,12 +179,16 @@ export async function getFlashcards(req, res) {
  */
 export async function getWeakTopics(req, res) {
   try {
-    const userId = req.user?.userId || 'default_student_1';
-    const incorrectCards = memoryFlashcards.filter(
-      (c) => (c.userId === userId || !c.userId) && c.lastResult === 'incorrect'
-    );
+    const userId = req.user?.userId || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
 
-    // Group by subject and topic
+    const incorrectCards = await FlashcardQuizModel.find({
+      userId,
+      lastResult: 'incorrect',
+    }).lean();
+
     const weakMap = {};
     incorrectCards.forEach((c) => {
       const key = `${c.subjectName} — ${c.topicName}`;
@@ -209,6 +216,7 @@ export async function getWeakTopics(req, res) {
           : '🎉 Excellent! No weak topics detected. Your retention is strong across all subjects.',
     });
   } catch (error) {
+    console.error('Error fetching weak topics:', error);
     return res.status(500).json({ success: false, error: 'Could not calculate weak topics.' });
   }
 }

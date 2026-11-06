@@ -340,7 +340,7 @@ export default function SubjectsPage() {
   /* ── quiz / tutor ── */
   const handleQuiz = async (topicName, subjectName) => {
     await generateCustomQuiz(topicName, subjectName);
-    navigate('/flashcards');
+    navigate('/app/flashcards');
   };
 
   const handleTutor = (topicName, subjectName) => {

@@ -116,7 +116,7 @@ export default function ChatInterface({ isFloating = false }) {
         <div className="flex items-center gap-2 shrink-0">
           <Compass className="w-3.5 h-3.5 text-indigo-400" />
           <span>
-            <strong>Context Injected:</strong> {nearestExam ? `${nearestExam.name} (${formatDaysLeftLabel(nearestExam.daysLeft)})` : 'CS301 Exam in 5 days'} &bull; {pendingCount} tasks today &bull; {overdueCount} overdue
+            <strong>Context Injected:</strong> {nearestExam ? `${nearestExam.name} (${formatDaysLeftLabel(nearestExam.daysLeft)})` : 'No upcoming exams'} &bull; {pendingCount} tasks today &bull; {overdueCount} overdue
           </span>
         </div>
         <div className="flex items-center gap-1 shrink-0 text-slate-300">

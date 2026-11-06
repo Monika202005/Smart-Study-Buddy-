@@ -74,7 +74,7 @@ export default function FloatingChatWidget() {
               <button
                 onClick={() => {
                   toggleFloatingChat(false);
-                  navigate('/chat');
+                  navigate('/app/chat');
                 }}
                 className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors focus:outline-none focus:ring-1 focus:ring-indigo-400"
                 title="Open Fullscreen Page"

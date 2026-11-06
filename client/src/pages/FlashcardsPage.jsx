@@ -14,7 +14,7 @@ import WeakTopicsBanner from '../components/flashcards/WeakTopicsBanner';
 import GenerateQuizModal from '../components/flashcards/GenerateQuizModal';
 
 export default function FlashcardsPage() {
-  const { flashcards, loadFlashcards, weakTopics, loadWeakTopics } = useStore();
+  const { flashcards, loadFlashcards, weakTopics, loadWeakTopics, subjects } = useStore();
   const [activeTab, setActiveTab] = useState('flashcards'); // 'flashcards' | 'quiz' | 'weak'
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState('all');
@@ -25,9 +25,21 @@ export default function FlashcardsPage() {
     loadWeakTopics();
   }, []);
 
+  const availableSubjects = (subjects && subjects.length > 0)
+    ? subjects
+    : [...new Set(flashcards.map((f) => f.subjectName).filter(Boolean))].map((name) => ({
+        id: name,
+        name,
+        code: '',
+      }));
+
   // Filter cards
   const filteredCards = flashcards.filter((card) => {
-    if (selectedSubject !== 'all' && card.subjectId !== selectedSubject) {
+    if (
+      selectedSubject !== 'all' &&
+      card.subjectId !== selectedSubject &&
+      card.subjectName !== selectedSubject
+    ) {
       return false;
     }
     if (selectedStatus !== 'all' && card.lastResult !== selectedStatus) {
@@ -119,9 +131,11 @@ export default function FlashcardsPage() {
               className="bg-slate-900 border border-slate-800 text-slate-300 rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-purple-500"
             >
               <option value="all">All Subjects</option>
-              <option value="cs301">CS301 (Data Structures)</option>
-              <option value="cs304">CS304 (DBMS)</option>
-              <option value="cs308">CS308 (Operating Systems)</option>
+              {availableSubjects.map((s) => (
+                <option key={s.id || s._id || s.name} value={s.id || s._id || s.name}>
+                  {s.code ? `${s.code} (${s.name})` : s.name}
+                </option>
+              ))}
             </select>
 
             <select

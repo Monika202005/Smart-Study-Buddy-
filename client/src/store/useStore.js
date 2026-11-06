@@ -9,30 +9,47 @@ import {
   fetchWeakTopicsApi,
   loginUserApi,
   registerUserApi,
+  fetchCurrentUserApi,
   fetchTasksApi,
   fetchSubjectsApi,
   checkServerHealth,
 } from '../services/api.js';
 
-const initialToken = localStorage.getItem('studybuddy_token');
-const initialUser = localStorage.getItem('studybuddy_user')
-  ? JSON.parse(localStorage.getItem('studybuddy_user'))
-  : {
-      id: 'default_student_1',
-      name: 'Monika Sharma',
-      email: 'monika@studybuddy.dev',
-      dailyHours: 4,
-      streak: 4,
-      role: 'Student',
-    };
+const initialToken = localStorage.getItem('studybuddy_token') || null;
+let initialUser = null;
+try {
+  const raw = localStorage.getItem('studybuddy_user');
+  if (raw) initialUser = JSON.parse(raw);
+} catch {
+  initialUser = null;
+}
 
 export const useStore = create((set, get) => ({
   // Auth state
-  isAuthenticated: Boolean(initialToken) || true, // default active for seamless dev, fully toggleable
-  token: initialToken || 'mock_jwt_token_studybuddy_monika',
+  isAuthenticated: Boolean(initialToken),
+  token: initialToken,
   user: initialUser,
   authError: null,
   isAuthLoading: false,
+
+  fetchCurrentUser: async () => {
+    const token = get().token;
+    if (!token) {
+      set({ isAuthenticated: false, user: null });
+      return null;
+    }
+    try {
+      const data = await fetchCurrentUserApi();
+      if (data?.user) {
+        localStorage.setItem('studybuddy_user', JSON.stringify(data.user));
+        set({ user: data.user, isAuthenticated: true });
+        return data.user;
+      }
+    } catch {
+      get().logout();
+      return null;
+    }
+  },
 
   login: async (email, password) => {
     try {
@@ -82,6 +99,8 @@ export const useStore = create((set, get) => ({
     set({
       isAuthenticated: false,
       token: null,
+      user: null,
+      authError: null,
     });
   },
 
@@ -165,9 +184,10 @@ export const useStore = create((set, get) => ({
     if (!text || !text.trim() || get().isChatLoading) return;
 
     const trimmed = text.trim();
+    const currentUserId = get().user?.id || get().user?.userId || 'student';
     const tempUserMsg = {
       _id: `temp_u_${Date.now()}`,
-      userId: get().user.id,
+      userId: currentUserId,
       role: 'user',
       content: trimmed,
       createdAt: new Date().toISOString(),
@@ -181,11 +201,11 @@ export const useStore = create((set, get) => ({
     }));
 
     try {
-      const data = await sendChatMessage(trimmed, get().user.id);
+      const data = await sendChatMessage(trimmed, currentUserId);
       if (data.success) {
         const assistantMsg = {
           _id: data.messageId || `msg_a_${Date.now()}`,
-          userId: get().user.id,
+          userId: currentUserId,
           role: 'assistant',
           content: data.reply,
           toolCalls: data.toolCalls || [],

@@ -1,49 +1,47 @@
 import SubjectModel from '../models/Subject.js';
 import TopicModel from '../models/Topic.js';
-import { mockSubjects } from '../models/mockPlannerStore.js';
-import { getDBStatus } from '../config/db.js';
+import TaskModel from '../models/Task.js';
+import StudySessionModel from '../models/StudySession.js';
 
 /**
  * GET /api/subjects
- * Retrieve all subjects with their associated topics for the user (Member B)
+ * Retrieve all subjects with their associated topics for the authenticated user
  */
 export async function getSubjects(req, res) {
   try {
-    const userId = req.user?.id || req.user?.userId || 'default_student_1';
-
-    let subjects = [];
-
-    if (getDBStatus().connected) {
-      try {
-        const dbSubjects = await SubjectModel.find({ userId }).sort({ examDate: 1 }).lean();
-        const dbTopics = await TopicModel.find({ userId }).lean();
-
-        subjects = dbSubjects.map(sub => ({
-          id: sub._id.toString(),
-          _id: sub._id.toString(),
-          name: sub.name,
-          code: sub.code || '',
-          color: sub.color,
-          examDate: sub.examDate ? sub.examDate.toISOString().split('T')[0] : '',
-          topics: dbTopics
-            .filter(t => t.subjectId === sub._id.toString() || t.subjectId === sub.code)
-            .map(t => ({
-              id: t._id.toString(),
-              _id: t._id.toString(),
-              name: t.name,
-              difficulty: t.difficulty,
-              estimatedHours: t.estimatedHours,
-              status: t.status,
-            })),
-        }));
-      } catch (err) {
-        console.warn('MongoDB subjects query failed, falling back to memory store:', err.message);
-      }
+    const userId = req.user?.userId || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    if (subjects.length === 0) {
-      subjects = mockSubjects;
-    }
+    const [dbSubjects, dbTopics] = await Promise.all([
+      SubjectModel.find({ userId }).sort({ examDate: 1 }).lean(),
+      TopicModel.find({ userId }).lean(),
+    ]);
+
+    const subjects = dbSubjects.map((sub) => {
+      const subIdStr = sub._id.toString();
+      return {
+        id: subIdStr,
+        _id: subIdStr,
+        userId: sub.userId,
+        name: sub.name,
+        code: sub.code || '',
+        color: sub.color,
+        examDate: sub.examDate ? new Date(sub.examDate).toISOString().split('T')[0] : '',
+        topics: dbTopics
+          .filter((t) => t.subjectId === subIdStr || (sub.code && t.subjectId === sub.code))
+          .map((t) => ({
+            id: t._id.toString(),
+            _id: t._id.toString(),
+            subjectId: t.subjectId,
+            name: t.name,
+            difficulty: t.difficulty,
+            estimatedHours: t.estimatedHours,
+            status: t.status,
+          })),
+      };
+    });
 
     return res.status(200).json({
       success: true,
@@ -58,155 +56,154 @@ export async function getSubjects(req, res) {
 
 /**
  * POST /api/subjects
- * Create a new academic subject with exam date and color (Member B)
+ * Create a new academic subject with exam date and color
  */
 export async function createSubject(req, res) {
   try {
-    const userId = req.user?.id || req.user?.userId || 'default_student_1';
-    const { name, color = '#6366f1', examDate, code } = req.body;
-
-    if (!name || !examDate) {
-      return res.status(400).json({ success: false, error: 'Subject name and exam date are required.' });
+    const userId = req.user?.userId || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    const subId = `subj_${Date.now()}`;
-    const newSubData = {
-      id: subId,
-      _id: subId,
+    const { name, color = '#6366f1', examDate, code } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, error: 'Subject name is required.' });
+    }
+    let parsedExamDate = null;
+    if (examDate) {
+      parsedExamDate = new Date(examDate);
+      if (isNaN(parsedExamDate.getTime())) {
+        return res.status(400).json({ success: false, error: 'Invalid exam date format.' });
+      }
+    }
+
+    const created = await SubjectModel.create({
       userId,
       name: name.trim(),
       code: code ? code.trim() : name.trim().slice(0, 6).toUpperCase(),
       color: color || '#6366f1',
-      examDate: typeof examDate === 'string' ? examDate.split('T')[0] : examDate,
+      examDate: parsedExamDate,
+    });
+
+    const subObj = created.toObject();
+    const result = {
+      ...subObj,
+      id: created._id.toString(),
+      _id: created._id.toString(),
+      examDate: parsedExamDate ? parsedExamDate.toISOString().split('T')[0] : '',
       topics: [],
     };
-
-    // Save to memory store
-    mockSubjects.push(newSubData);
-
-    // Save to MongoDB if connected
-    if (getDBStatus().connected) {
-      try {
-        const created = await SubjectModel.create({
-          userId,
-          name: newSubData.name,
-          code: newSubData.code,
-          color: newSubData.color,
-          examDate: new Date(newSubData.examDate),
-        });
-        newSubData._id = created._id.toString();
-        newSubData.id = created._id.toString();
-      } catch (err) {
-        console.warn('MongoDB subject create fallback:', err.message);
-      }
-    }
 
     return res.status(201).json({
       success: true,
       message: 'Subject added successfully.',
-      subject: newSubData,
+      subject: result,
     });
   } catch (error) {
+    console.error('Error creating subject:', error);
     return res.status(500).json({ success: false, error: 'Failed to create subject.' });
   }
 }
 
 /**
  * PUT /api/subjects/:id
- * Update subject details (Member B)
+ * Update subject details (scoped by userId)
  */
 export async function updateSubject(req, res) {
   try {
+    const userId = req.user?.userId || req.user?.id;
     const { id } = req.params;
     const { name, color, examDate, code } = req.body;
 
-    const subject = mockSubjects.find(s => s.id === id || s._id === id);
-    if (subject) {
-      if (name) subject.name = name.trim();
-      if (color) subject.color = color;
-      if (examDate) subject.examDate = typeof examDate === 'string' ? examDate.split('T')[0] : examDate;
-      if (code) subject.code = code.trim();
+    const subject = await SubjectModel.findOne({ _id: id, userId });
+    if (!subject) {
+      return res.status(404).json({ success: false, error: 'Subject not found.' });
     }
 
-    if (getDBStatus().connected) {
-      try {
-        await SubjectModel.findByIdAndUpdate(id, {
-          ...(name && { name: name.trim() }),
-          ...(color && { color }),
-          ...(examDate && { examDate: new Date(examDate) }),
-          ...(code && { code: code.trim() }),
-        });
-      } catch (err) {
-        // silent
-      }
+    if (name) subject.name = name.trim();
+    if (color) subject.color = color;
+    if (code !== undefined) subject.code = code.trim();
+    if (examDate) {
+      const parsed = new Date(examDate);
+      if (!isNaN(parsed.getTime())) subject.examDate = parsed;
     }
+
+    await subject.save();
 
     return res.status(200).json({
       success: true,
       message: 'Subject updated successfully.',
-      subject,
+      subject: {
+        id: subject._id.toString(),
+        _id: subject._id.toString(),
+        name: subject.name,
+        code: subject.code,
+        color: subject.color,
+        examDate: subject.examDate ? new Date(subject.examDate).toISOString().split('T')[0] : '',
+      },
     });
   } catch (error) {
+    console.error('Error updating subject:', error);
     return res.status(500).json({ success: false, error: 'Failed to update subject.' });
   }
 }
 
 /**
  * DELETE /api/subjects/:id
- * Delete subject and associated topics (Member B)
+ * Delete subject and cascade delete associated topics, tasks, and sessions
  */
 export async function deleteSubject(req, res) {
   try {
+    const userId = req.user?.userId || req.user?.id;
     const { id } = req.params;
-    const index = mockSubjects.findIndex(s => s.id === id || s._id === id);
-    if (index !== -1) {
-      mockSubjects.splice(index, 1);
+
+    const subject = await SubjectModel.findOneAndDelete({ _id: id, userId });
+    if (!subject) {
+      return res.status(404).json({ success: false, error: 'Subject not found.' });
     }
 
-    if (getDBStatus().connected) {
-      try {
-        await SubjectModel.findByIdAndDelete(id);
-        await TopicModel.deleteMany({ subjectId: id });
-      } catch (err) {
-        // silent
-      }
-    }
+    // Cascade deletion
+    await Promise.all([
+      TopicModel.deleteMany({ subjectId: id, userId }),
+      TaskModel.deleteMany({ subjectId: id, userId }),
+      StudySessionModel.deleteMany({ subjectId: id, userId }),
+    ]);
 
     return res.status(200).json({
       success: true,
-      message: 'Subject deleted successfully.',
+      message: 'Subject and associated syllabus/tasks deleted successfully.',
     });
   } catch (error) {
+    console.error('Error deleting subject:', error);
     return res.status(500).json({ success: false, error: 'Failed to delete subject.' });
   }
 }
 
 /**
  * GET /api/subjects/:id/topics
- * Retrieve topics for a given subject (Member B)
+ * Retrieve topics for a given subject (scoped by userId)
  */
 export async function getTopicsForSubject(req, res) {
   try {
-    const { id } = req.params;
-    const subject = mockSubjects.find(s => s.id === id || s._id === id);
+    const userId = req.user?.userId || req.user?.id;
+    const { id: subjectId } = req.params;
 
-    let topics = subject?.topics || [];
-
-    if (getDBStatus().connected) {
-      try {
-        const dbTopics = await TopicModel.find({ subjectId: id });
-        if (dbTopics.length > 0) {
-          topics = dbTopics.map(t => ({
-            id: t._id.toString(),
-            _id: t._id.toString(),
-            name: t.name,
-            difficulty: t.difficulty,
-            estimatedHours: t.estimatedHours,
-            status: t.status,
-          }));
-        }
-      } catch (e) {}
+    const subject = await SubjectModel.findOne({ _id: subjectId, userId });
+    if (!subject) {
+      return res.status(404).json({ success: false, error: 'Subject not found.' });
     }
+
+    const dbTopics = await TopicModel.find({ subjectId, userId }).lean();
+    const topics = dbTopics.map((t) => ({
+      id: t._id.toString(),
+      _id: t._id.toString(),
+      subjectId: t.subjectId,
+      name: t.name,
+      difficulty: t.difficulty,
+      estimatedHours: t.estimatedHours,
+      status: t.status,
+    }));
 
     return res.status(200).json({
       success: true,
@@ -214,148 +211,127 @@ export async function getTopicsForSubject(req, res) {
       topics,
     });
   } catch (error) {
+    console.error('Error retrieving topics:', error);
     return res.status(500).json({ success: false, error: 'Failed to retrieve topics.' });
   }
 }
 
 /**
  * POST /api/subjects/:id/topics
- * Add a topic to a subject (Member B)
+ * Add a topic to a subject (scoped by userId)
  */
 export async function createTopic(req, res) {
   try {
-    const userId = req.user?.id || req.user?.userId || 'default_student_1';
+    const userId = req.user?.userId || req.user?.id;
     const { id: subjectId } = req.params;
     const { name, difficulty = 2, estimatedHours = 2, status = 'pending' } = req.body;
 
-    if (!name) {
+    if (!name || !name.trim()) {
       return res.status(400).json({ success: false, error: 'Topic name is required.' });
     }
 
-    const topicId = `top_${Date.now()}`;
-    const newTopic = {
-      id: topicId,
-      _id: topicId,
+    const subject = await SubjectModel.findOne({ _id: subjectId, userId });
+    if (!subject) {
+      return res.status(404).json({ success: false, error: 'Subject not found.' });
+    }
+
+    const validStatus = ['pending', 'in_progress', 'completed'].includes(status)
+      ? status
+      : status === 'in-progress'
+      ? 'in_progress'
+      : 'pending';
+
+    const created = await TopicModel.create({
       userId,
       subjectId,
       name: name.trim(),
       difficulty: Number(difficulty) || 2,
-      estimatedHours: Number(estimatedHours) || 2,
-      status: ['pending', 'in-progress', 'in_progress', 'completed'].includes(status) ? status : 'pending',
+      estimatedHours: Math.min(Math.max(Number(estimatedHours) || 2, 0.5), 20),
+      status: validStatus,
+    });
+
+    const result = {
+      ...created.toObject(),
+      id: created._id.toString(),
+      _id: created._id.toString(),
     };
-
-    const subject = mockSubjects.find(s => s.id === subjectId || s._id === subjectId);
-    if (subject) {
-      if (!subject.topics) subject.topics = [];
-      subject.topics.push(newTopic);
-    }
-
-    if (getDBStatus().connected) {
-      try {
-        const created = await TopicModel.create({
-          userId,
-          subjectId,
-          name: newTopic.name,
-          difficulty: newTopic.difficulty,
-          estimatedHours: newTopic.estimatedHours,
-          status: newTopic.status.replace('-', '_'),
-        });
-        newTopic._id = created._id.toString();
-        newTopic.id = created._id.toString();
-      } catch (e) {}
-    }
 
     return res.status(201).json({
       success: true,
       message: 'Topic created successfully.',
-      topic: newTopic,
+      topic: result,
     });
   } catch (error) {
+    console.error('Error creating topic:', error);
     return res.status(500).json({ success: false, error: 'Failed to create topic.' });
   }
 }
 
 /**
  * PUT /api/topics/:id
- * Update topic status / difficulty / name (Member B)
+ * Update topic status / difficulty / name (scoped by userId)
  */
 export async function updateTopic(req, res) {
   try {
+    const userId = req.user?.userId || req.user?.id;
     const { id } = req.params;
     const { name, difficulty, estimatedHours, status } = req.body;
 
-    let updated = null;
-
-    // Check in mockSubjects
-    mockSubjects.forEach(s => {
-      if (s.topics) {
-        const t = s.topics.find(topic => topic.id === id || topic._id === id);
-        if (t) {
-          if (name) t.name = name.trim();
-          if (difficulty) t.difficulty = Number(difficulty);
-          if (estimatedHours) t.estimatedHours = Number(estimatedHours);
-          if (status) t.status = status;
-          updated = t;
-        }
-      }
-    });
-
-    if (getDBStatus().connected) {
-      try {
-        const doc = await TopicModel.findByIdAndUpdate(
-          id,
-          {
-            ...(name && { name: name.trim() }),
-            ...(difficulty && { difficulty: Number(difficulty) }),
-            ...(estimatedHours && { estimatedHours: Number(estimatedHours) }),
-            ...(status && { status: status.replace('-', '_') }),
-          },
-          { new: true }
-        );
-        if (doc) updated = doc;
-      } catch (e) {}
-    }
-
-    if (!updated) {
+    const topic = await TopicModel.findOne({ _id: id, userId });
+    if (!topic) {
       return res.status(404).json({ success: false, error: 'Topic not found.' });
     }
+
+    if (name) topic.name = name.trim();
+    if (difficulty !== undefined) topic.difficulty = Number(difficulty);
+    if (estimatedHours !== undefined) topic.estimatedHours = Number(estimatedHours);
+    if (status) {
+      const normStatus = status === 'in-progress' ? 'in_progress' : status;
+      if (['pending', 'in_progress', 'completed'].includes(normStatus)) {
+        topic.status = normStatus;
+      }
+    }
+
+    await topic.save();
 
     return res.status(200).json({
       success: true,
       message: 'Topic updated successfully.',
-      topic: updated,
+      topic: {
+        ...topic.toObject(),
+        id: topic._id.toString(),
+        _id: topic._id.toString(),
+      },
     });
   } catch (error) {
+    console.error('Error updating topic:', error);
     return res.status(500).json({ success: false, error: 'Failed to update topic.' });
   }
 }
 
 /**
  * DELETE /api/topics/:id
- * Delete a topic (Member B)
+ * Delete a topic (scoped by userId)
  */
 export async function deleteTopic(req, res) {
   try {
+    const userId = req.user?.userId || req.user?.id;
     const { id } = req.params;
 
-    mockSubjects.forEach(s => {
-      if (s.topics) {
-        const idx = s.topics.findIndex(t => t.id === id || t._id === id);
-        if (idx !== -1) s.topics.splice(idx, 1);
-      }
-    });
-
-    if (getDBStatus().connected) {
-      try {
-        await TopicModel.findByIdAndDelete(id);
-      } catch (e) {}
+    const topic = await TopicModel.findOneAndDelete({ _id: id, userId });
+    if (!topic) {
+      return res.status(404).json({ success: false, error: 'Topic not found.' });
     }
+
+    // Cascade delete any task specifically linked to this topic
+    await TaskModel.deleteMany({ topicId: id, userId });
 
     return res.status(200).json({
       success: true,
       message: 'Topic deleted successfully.',
     });
   } catch (error) {
+    console.error('Error deleting topic:', error);
     return res.status(500).json({ success: false, error: 'Failed to delete topic.' });
   }
 }

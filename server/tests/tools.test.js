@@ -1,7 +1,8 @@
 import { executeTool } from '../services/chatbotTools.js';
 import { validateToolArguments, validateISODate } from '../services/toolValidator.js';
 import { getTodayTasks, getMissedTasks, addTask, rescheduleOverdue } from '../services/plannerRepository.js';
-import { memoryFlashcards } from '../models/FlashcardQuiz.js';
+import { toDateString } from '../services/analyticsService.js';
+import FlashcardQuizModel from '../models/FlashcardQuiz.js';
 
 describe('Tool Validation & Execution (TASK 2 & TASK 3)', () => {
   describe('Schema & Date Validation', () => {
@@ -110,7 +111,7 @@ describe('Tool Validation & Execution (TASK 2 & TASK 3)', () => {
       // Add a task for userA
       await addTask(userA, {
         title: 'User A Special Task',
-        scheduledDate: new Date().toISOString().split('T')[0],
+        scheduledDate: toDateString(new Date()),
       });
 
       const planA = await executeTool('get_today_plan', {}, userA);
@@ -125,7 +126,7 @@ describe('Tool Validation & Execution (TASK 2 & TASK 3)', () => {
 
     it('executes reschedule_missed for user overdue tasks', async () => {
       const testUser = 'user_reschedule_test';
-      const yesterdayStr = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const yesterdayStr = toDateString(new Date(Date.now() - 24 * 60 * 60 * 1000));
 
       await addTask(testUser, {
         title: 'Overdue Task 1',
@@ -140,7 +141,7 @@ describe('Tool Validation & Execution (TASK 2 & TASK 3)', () => {
 
     it('generates flashcards, validates schema, caps count, and saves to store for user', async () => {
       const testUser = 'user_flashcard_test';
-      const initialCount = memoryFlashcards.filter((f) => f.userId === testUser).length;
+      const initialCount = await FlashcardQuizModel.countDocuments({ userId: testUser });
 
       const result = await executeTool(
         'generate_flashcards',
@@ -154,7 +155,7 @@ describe('Tool Validation & Execution (TASK 2 & TASK 3)', () => {
       expect(result.flashcards[0].userId).toBe(testUser);
       expect(result.flashcards[0].options.length).toBeGreaterThanOrEqual(2);
 
-      const updatedCount = memoryFlashcards.filter((f) => f.userId === testUser).length;
+      const updatedCount = await FlashcardQuizModel.countDocuments({ userId: testUser });
       expect(updatedCount).toBe(initialCount + 2);
     });
   });

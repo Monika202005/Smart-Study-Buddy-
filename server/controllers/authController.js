@@ -1,90 +1,84 @@
-import UserModel, { memoryUsers, hashPassword } from '../models/User.js';
+import { z } from 'zod';
+import UserModel, { hashPassword } from '../models/User.js';
 import { generateToken } from '../middleware/authMiddleware.js';
-import { getDBStatus } from '../config/db.js';
-import bcrypt from 'bcryptjs';
+
+const registerSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required').max(100),
+  email: z.string().trim().email('Please provide a valid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters long'),
+  dailyHours: z.coerce.number().min(1).max(16).optional().default(2),
+  theme: z.enum(['dark', 'light']).optional().default('dark'),
+});
+
+const loginSchema = z.object({
+  email: z.string().trim().email('Please provide a valid email address'),
+  password: z.string().min(1, 'Password is required'),
+});
+
+const profileUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(100).optional(),
+  dailyHours: z.coerce.number().min(1).max(16).optional(),
+  theme: z.enum(['dark', 'light']).optional(),
+});
 
 /**
  * POST /api/auth/register
- * Register a new university student account (Member B)
  */
 export async function register(req, res) {
   try {
-    const { name, email, password, dailyHours = 4, theme = 'dark' } = req.body;
-
-    // Validation
-    if (!name || !email || !password) {
-      return res.status(400).json({ success: false, error: 'Name, email, and password are required.' });
+    const parseResult = registerSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      const errorMsg = parseResult.error.issues?.[0]?.message || parseResult.error.errors?.[0]?.message || 'Invalid registration data.';
+      return res.status(400).json({
+        success: false,
+        error: errorMsg,
+      });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ success: false, error: 'Password must be at least 6 characters long.' });
-    }
+    const { name, email, password, dailyHours, theme } = parseResult.data;
+    const emailClean = email.toLowerCase();
 
-    const emailClean = email.trim().toLowerCase();
-    const nameClean = name.trim();
-
-    // Check existing
-    let existingUser = null;
-    if (getDBStatus().connected) {
-      existingUser = await UserModel.findOne({ email: emailClean });
-    } else {
-      existingUser = memoryUsers.find(u => u.email.toLowerCase() === emailClean);
-    }
-
+    // Check duplicate email
+    const existingUser = await UserModel.findOne({ email: emailClean });
     if (existingUser) {
-      return res.status(409).json({ success: false, error: 'An account with this email already exists.' });
+      return res.status(409).json({
+        success: false,
+        error: 'This email address is already registered. Please sign in or use a different email.',
+      });
     }
 
-    // Hash password using bcrypt
+    // Hash password with bcrypt cost 10+
     const passwordHash = await hashPassword(password);
-    const userId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 
-    const newUserObj = {
-      _id: userId,
-      id: userId,
-      name: nameClean,
+    const newUser = await UserModel.create({
+      name,
       email: emailClean,
       passwordHash,
-      dailyHours: Math.min(Math.max(Number(dailyHours) || 4, 1), 16),
-      theme,
-      streak: 1,
-      createdAt: new Date(),
-    };
-
-    // Save to memory
-    memoryUsers.push(newUserObj);
-
-    // Save to MongoDB if connected
-    if (getDBStatus().connected) {
-      try {
-        await UserModel.create(newUserObj);
-      } catch (dbErr) {
-        console.warn('MongoDB save error in register, persisted in memory:', dbErr.message);
-      }
-    }
-
-    const token = generateToken({
-      id: newUserObj._id,
-      userId: newUserObj._id,
-      email: newUserObj.email,
-      name: newUserObj.name,
+      dailyHours: dailyHours || 2,
+      theme: theme || 'dark',
+      streak: 0,
     });
 
-    const userResponse = {
-      id: newUserObj._id,
-      _id: newUserObj._id,
-      name: newUserObj.name,
-      email: newUserObj.email,
-      dailyHours: newUserObj.dailyHours,
-      theme: newUserObj.theme,
-      streak: newUserObj.streak,
-    };
+    const token = generateToken({
+      id: newUser._id.toString(),
+      userId: newUser._id.toString(),
+      email: newUser.email,
+      name: newUser.name,
+    });
 
     return res.status(201).json({
       success: true,
       message: 'Account created successfully!',
       token,
-      user: userResponse,
+      user: {
+        id: newUser._id.toString(),
+        _id: newUser._id.toString(),
+        name: newUser.name,
+        email: newUser.email,
+        dailyHours: newUser.dailyHours,
+        theme: newUser.theme,
+        streak: newUser.streak,
+      },
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -94,48 +88,34 @@ export async function register(req, res) {
 
 /**
  * POST /api/auth/login
- * Authenticate student credentials & return JWT (Member B)
  */
 export async function login(req, res) {
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ success: false, error: 'Email and password are required.' });
+    const parseResult = loginSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      const errorMsg = parseResult.error.issues?.[0]?.message || parseResult.error.errors?.[0]?.message || 'Email and password are required.';
+      return res.status(400).json({
+        success: false,
+        error: errorMsg,
+      });
     }
 
-    const emailClean = email.trim().toLowerCase();
+    const { email, password } = parseResult.data;
+    const emailClean = email.toLowerCase();
 
-    let user = null;
-    if (getDBStatus().connected) {
-      user = await UserModel.findOne({ email: emailClean });
-    } else {
-      user = memoryUsers.find(u => u.email.toLowerCase() === emailClean);
-    }
-
-    // If demo/offline default user login
-    if (!user && (emailClean === 'monika@studybuddy.dev' || emailClean === 'student@studybuddy.dev')) {
-      user = memoryUsers[0];
-    }
-
+    const user = await UserModel.findOne({ email: emailClean });
     if (!user) {
       return res.status(401).json({ success: false, error: 'Invalid email or password.' });
     }
 
-    // Verify password with bcrypt (or allow demo dev fallback password)
-    const passwordMatch = user.passwordHash
-      ? await bcrypt.compare(password, user.passwordHash).catch(() => false)
-      : false;
-
-    const isDemoPassword = password === 'studybuddy2026' || password === 'password123';
-
-    if (!passwordMatch && !isDemoPassword) {
+    const passwordMatch = await user.comparePassword(password).catch(() => false);
+    if (!passwordMatch) {
       return res.status(401).json({ success: false, error: 'Invalid email or password.' });
     }
 
     const token = generateToken({
-      id: user._id || user.id,
-      userId: user._id || user.id,
+      id: user._id.toString(),
+      userId: user._id.toString(),
       email: user.email,
       name: user.name,
     });
@@ -145,13 +125,13 @@ export async function login(req, res) {
       message: 'Logged in successfully.',
       token,
       user: {
-        id: user._id || user.id,
-        _id: user._id || user.id,
+        id: user._id.toString(),
+        _id: user._id.toString(),
         name: user.name,
         email: user.email,
-        dailyHours: user.dailyHours || 4,
-        theme: user.theme || 'dark',
-        streak: user.streak || 1,
+        dailyHours: user.dailyHours,
+        theme: user.theme,
+        streak: user.streak,
       },
     });
   } catch (error) {
@@ -162,69 +142,93 @@ export async function login(req, res) {
 
 /**
  * GET /api/auth/me
- * Return current user profile details (Member B)
  */
 export async function getMe(req, res) {
   try {
-    const userId = req.user?.id || req.user?.userId || 'default_student_1';
-
-    let user = null;
-    if (getDBStatus().connected) {
-      user = await UserModel.findById(userId).select('-passwordHash');
-    } else {
-      user = memoryUsers.find(u => (u._id || u.id) === userId) || memoryUsers[0];
+    const userId = req.user?.userId || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized.' });
     }
 
+    const user = await UserModel.findById(userId).select('-passwordHash').lean();
     if (!user) {
-      return res.status(404).json({ success: false, error: 'User profile not found.' });
+      return res.status(404).json({ success: false, error: 'User not found.' });
     }
 
     return res.status(200).json({
       success: true,
       user: {
-        id: user._id || user.id,
-        _id: user._id || user.id,
+        id: user._id.toString(),
+        _id: user._id.toString(),
         name: user.name,
         email: user.email,
-        dailyHours: user.dailyHours || 4,
-        theme: user.theme || 'dark',
-        streak: user.streak || 1,
+        dailyHours: user.dailyHours,
+        theme: user.theme,
+        streak: user.streak,
+        createdAt: user.createdAt,
       },
     });
   } catch (error) {
-    return res.status(500).json({ success: false, error: 'Could not fetch user profile.' });
+    console.error('getMe error:', error);
+    return res.status(500).json({ success: false, error: 'Failed to retrieve profile.' });
   }
 }
 
 /**
- * PUT /api/auth/profile
- * Update user settings (daily hours, theme, name) (Member B)
+ * GET /api/user/profile
+ */
+export async function getProfile(req, res) {
+  return getMe(req, res);
+}
+
+/**
+ * PUT /api/user/profile
  */
 export async function updateProfile(req, res) {
   try {
-    const userId = req.user?.id || req.user?.userId || 'default_student_1';
-    const { dailyHours, theme, name } = req.body;
-
-    const updateFields = {};
-    if (dailyHours !== undefined) updateFields.dailyHours = Math.min(Math.max(Number(dailyHours), 1), 16);
-    if (theme && ['dark', 'light'].includes(theme)) updateFields.theme = theme;
-    if (name && name.trim()) updateFields.name = name.trim();
-
-    let updatedUser = null;
-    if (getDBStatus().connected) {
-      updatedUser = await UserModel.findByIdAndUpdate(userId, updateFields, { new: true }).select('-passwordHash');
+    const userId = req.user?.userId || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized.' });
     }
 
-    // Always update memory store
-    const memUser = memoryUsers.find(u => (u._id || u.id) === userId) || memoryUsers[0];
-    Object.assign(memUser, updateFields);
+    const parseResult = profileUpdateSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      const errorMsg = parseResult.error.issues?.[0]?.message || parseResult.error.errors?.[0]?.message || 'Invalid profile data.';
+      return res.status(400).json({
+        success: false,
+        error: errorMsg,
+      });
+    }
+
+    const { name, dailyHours, theme } = parseResult.data;
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (dailyHours !== undefined) updateData.dailyHours = dailyHours;
+    if (theme !== undefined) updateData.theme = theme;
+
+    const user = await UserModel.findByIdAndUpdate(userId, updateData, { new: true })
+      .select('-passwordHash')
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found.' });
+    }
 
     return res.status(200).json({
       success: true,
       message: 'Profile updated successfully.',
-      user: updatedUser || memUser,
+      user: {
+        id: user._id.toString(),
+        _id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        dailyHours: user.dailyHours,
+        theme: user.theme,
+        streak: user.streak,
+      },
     });
   } catch (error) {
-    return res.status(500).json({ success: false, error: 'Could not update profile.' });
+    console.error('updateProfile error:', error);
+    return res.status(500).json({ success: false, error: 'Failed to update profile.' });
   }
 }

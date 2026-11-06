@@ -5,13 +5,13 @@ import {
   getMissedTasks,
   getExams,
 } from './plannerRepository.js';
-import { memoryChatMessages } from '../models/ChatMessage.js';
-import { memoryFlashcards } from '../models/FlashcardQuiz.js';
+import ChatMessageModel from '../models/ChatMessage.js';
+import FlashcardQuizModel from '../models/FlashcardQuiz.js';
 
 /**
  * Builds dynamic planner context for the AI Chatbot
  *
- * Uses ONLY the plannerRepository data-access layer.
+ * Uses Mongoose models scoped strictly by userId.
  * Injects:
  * 1. Current student profile & daily study limit
  * 2. Enrolled subjects and their overall status
@@ -22,21 +22,23 @@ import { memoryFlashcards } from '../models/FlashcardQuiz.js';
  * 7. Last 5 conversational messages
  */
 export async function buildPlannerContext(userId = 'default_student_1') {
-  const student = await getUser(userId);
-  const subjects = await getSubjects(userId);
-  const todayTasks = await getTodayTasks(userId);
-  const missedTasks = await getMissedTasks(userId);
-  const upcomingExams = await getExams(userId, 14);
+  const [student, subjects, todayTasks, missedTasks, upcomingExams, dbWeakCards, recentDbMessages] =
+    await Promise.all([
+      getUser(userId),
+      getSubjects(userId),
+      getTodayTasks(userId),
+      getMissedTasks(userId),
+      getExams(userId, 14),
+      FlashcardQuizModel.find({ userId, lastResult: 'incorrect' }).lean(),
+      ChatMessageModel.find({ userId }).sort({ createdAt: -1 }).limit(5).lean(),
+    ]);
 
   // Calculate weak topics from quiz records for this user
-  const weakTopics = memoryFlashcards
-    .filter((f) => f.userId === userId && f.lastResult === 'incorrect')
-    .map((f) => `${f.subjectName}: ${f.topicName}`);
+  const weakTopics = dbWeakCards.map((f) => `${f.subjectName || 'General'}: ${f.topicName || f.question.slice(0, 30)}`);
 
-  // Fetch last 5 messages for this user
-  const recentMessages = memoryChatMessages
-    .filter((m) => m.userId === userId)
-    .slice(-5)
+  // Fetch last 5 messages for this user (chronological order)
+  const recentMessages = recentDbMessages
+    .reverse()
     .map((m) => `${m.role.toUpperCase()}: ${m.content.slice(0, 200)}`);
 
   const contextData = {

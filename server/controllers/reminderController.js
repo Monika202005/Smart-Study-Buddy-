@@ -1,25 +1,18 @@
-import ReminderModel, { memoryReminders } from '../models/Reminder.js';
-import { getDBStatus } from '../config/db.js';
+import ReminderModel from '../models/Reminder.js';
 
 /**
  * GET /api/reminders
- * List reminders for current user (Member B)
+ * List reminders for current user
  */
 export async function getReminders(req, res) {
   try {
-    const userId = req.user?.id || req.user?.userId || 'default_student_1';
-
-    let reminders = [];
-    if (getDBStatus().connected) {
-      try {
-        const docs = await ReminderModel.find({ userId }).sort({ remindAt: 1 }).lean();
-        reminders = docs.map(d => ({ ...d, id: d._id.toString() }));
-      } catch (e) {}
+    const userId = req.user?.userId || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    if (reminders.length === 0) {
-      reminders = memoryReminders.filter(r => r.userId === userId);
-    }
+    const docs = await ReminderModel.find({ userId }).sort({ remindAt: 1 }).lean();
+    const reminders = docs.map((d) => ({ ...d, id: d._id.toString() }));
 
     return res.status(200).json({
       success: true,
@@ -27,81 +20,80 @@ export async function getReminders(req, res) {
       reminders,
     });
   } catch (error) {
+    console.error('Error fetching reminders:', error);
     return res.status(500).json({ success: false, error: 'Could not fetch reminders.' });
   }
 }
 
 /**
  * POST /api/reminders
- * Schedule a new study reminder (Member B)
+ * Schedule a new study reminder
  */
 export async function createReminder(req, res) {
   try {
-    const userId = req.user?.id || req.user?.userId || 'default_student_1';
+    const userId = req.user?.userId || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
     const { title, remindAt, taskId = null, email = '' } = req.body;
 
     if (!title || !remindAt) {
       return res.status(400).json({ success: false, error: 'Title and remindAt date are required.' });
     }
 
-    const remId = `rem_${Date.now()}`;
-    const newReminder = {
-      _id: remId,
-      id: remId,
+    const parsedDate = new Date(remindAt);
+    if (isNaN(parsedDate.getTime())) {
+      return res.status(400).json({ success: false, error: 'Invalid remindAt date format.' });
+    }
+
+    const created = await ReminderModel.create({
       userId,
-      taskId,
+      taskId: taskId || null,
       title: title.trim(),
-      email: email || req.user?.email || 'monika@studybuddy.dev',
-      remindAt: new Date(remindAt),
+      email: email || req.user?.email || '',
+      remindAt: parsedDate,
       sent: false,
       status: 'pending',
-      createdAt: new Date(),
+    });
+
+    const result = {
+      ...created.toObject(),
+      id: created._id.toString(),
+      _id: created._id.toString(),
     };
-
-    memoryReminders.unshift(newReminder);
-
-    if (getDBStatus().connected) {
-      try {
-        const created = await ReminderModel.create(newReminder);
-        newReminder._id = created._id.toString();
-        newReminder.id = created._id.toString();
-      } catch (e) {}
-    }
 
     return res.status(201).json({
       success: true,
       message: 'Reminder scheduled successfully.',
-      reminder: newReminder,
+      reminder: result,
     });
   } catch (error) {
+    console.error('Error creating reminder:', error);
     return res.status(500).json({ success: false, error: 'Could not schedule reminder.' });
   }
 }
 
 /**
  * DELETE /api/reminders/:id
- * Delete/cancel a reminder (Member B)
+ * Delete/cancel a reminder (scoped by userId)
  */
 export async function deleteReminder(req, res) {
   try {
+    const userId = req.user?.userId || req.user?.id;
     const { id } = req.params;
 
-    const idx = memoryReminders.findIndex(r => r.id === id || r._id === id);
-    if (idx !== -1) {
-      memoryReminders.splice(idx, 1);
-    }
-
-    if (getDBStatus().connected) {
-      try {
-        await ReminderModel.findByIdAndDelete(id);
-      } catch (e) {}
+    const reminder = await ReminderModel.findOneAndDelete({ _id: id, userId });
+    if (!reminder) {
+      return res.status(404).json({ success: false, error: 'Reminder not found.' });
     }
 
     return res.status(200).json({
       success: true,
-      message: 'Reminder cancelled successfully.',
+      message: 'Reminder deleted successfully.',
     });
   } catch (error) {
+    console.error('Error deleting reminder:', error);
     return res.status(500).json({ success: false, error: 'Could not delete reminder.' });
   }
 }

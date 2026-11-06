@@ -9,7 +9,7 @@ const taskSchema = new mongoose.Schema(
     },
     subjectId: {
       type: String,
-      required: true,
+      default: 'general',
       index: true,
     },
     subjectName: {
@@ -19,6 +19,7 @@ const taskSchema = new mongoose.Schema(
     topicId: {
       type: String,
       default: null,
+      index: true,
     },
     title: {
       type: String,
@@ -32,12 +33,12 @@ const taskSchema = new mongoose.Schema(
       default: 'study',
     },
     dueDate: {
-      type: String, // YYYY-MM-DD
+      type: String,
       required: true,
       index: true,
     },
     scheduledDate: {
-      type: String, // YYYY-MM-DD
+      type: String,
       required: true,
       index: true,
     },
@@ -72,7 +73,6 @@ const taskSchema = new mongoose.Schema(
   }
 );
 
-// Performance compound indexes as required in Section 6
 taskSchema.index({ userId: 1, dueDate: 1 });
 taskSchema.index({ userId: 1, scheduledDate: 1, completed: 1 });
 

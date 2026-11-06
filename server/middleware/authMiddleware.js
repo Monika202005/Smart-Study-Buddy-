@@ -1,95 +1,98 @@
 import jwt from 'jsonwebtoken';
-import UserModel, { memoryUsers } from '../models/User.js';
-import { getDBStatus } from '../config/db.js';
+import UserModel from '../models/User.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'studybuddy_jwt_secret_dev_key_2026';
-
-/**
- * Authentication Middleware (Member B)
- * Verifies JWT from Authorization: Bearer <token>
- * Attaches authenticated user object to req.user
- */
 export async function authMiddleware(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
-
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      // Allow fallback if in offline/testing mode, or reject if strict
-      const devUser = memoryUsers[0];
-      req.user = {
-        id: devUser._id,
-        _id: devUser._id,
-        userId: devUser._id,
-        name: devUser.name,
-        email: devUser.email,
-        dailyHours: devUser.dailyHours,
-      };
-      return next();
+      return res.status(401).json({
+        success: false,
+        error: 'Access denied. Authentication token required. Please log in.',
+      });
     }
 
     const token = authHeader.split(' ')[1];
-
-    // Check for hardcoded mock dev token
-    if (token === 'mock_jwt_token_studybuddy_monika' || token.startsWith('mock_jwt_')) {
-      const devUser = memoryUsers[0];
-      req.user = {
-        id: devUser._id,
-        _id: devUser._id,
-        userId: devUser._id,
-        name: devUser.name,
-        email: devUser.email,
-        dailyHours: devUser.dailyHours,
-        token,
-      };
-      return next();
-    }
-
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      
-      let user = null;
-      if (getDBStatus().connected) {
-        user = await UserModel.findById(decoded.id || decoded.userId).select('-passwordHash');
-      } else {
-        user = memoryUsers.find(u => u._id === (decoded.id || decoded.userId));
-      }
-
-      if (!user) {
-        // Fallback to token payload data if user not found in ephemeral memory
-        req.user = {
-          id: decoded.id || decoded.userId,
-          _id: decoded.id || decoded.userId,
-          userId: decoded.id || decoded.userId,
-          email: decoded.email,
-          name: decoded.name || 'Student',
-        };
-      } else {
-        req.user = {
-          id: user._id.toString(),
-          _id: user._id.toString(),
-          userId: user._id.toString(),
-          name: user.name,
-          email: user.email,
-          dailyHours: user.dailyHours,
-        };
-      }
-
-      return next();
-    } catch (jwtErr) {
+    if (!token) {
       return res.status(401).json({
         success: false,
-        error: 'Invalid or expired authentication token. Please log in again.',
+        error: 'Authentication token missing.',
       });
     }
+
+    const secret = process.env.JWT_SECRET;
+    if (!secret && process.env.NODE_ENV !== 'test') {
+      return res.status(500).json({
+        success: false,
+        error: 'Server configuration error: JWT_SECRET missing.',
+      });
+    }
+    const effectiveSecret = secret || 'studybuddy_secret_jwt_fallback_key_2026';
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, effectiveSecret);
+    } catch (err) {
+      return res.status(401).json({
+        success: false,
+        error:
+          err.name === 'TokenExpiredError'
+            ? 'Token has expired. Please log in again.'
+            : 'Invalid authentication token.',
+      });
+    }
+
+    const userId = decoded.id || decoded.userId;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid token payload: missing user identifier.',
+      });
+    }
+
+    req.user = {
+      id: userId.toString(),
+      _id: userId.toString(),
+      userId: userId.toString(),
+      email: decoded.email,
+      name: decoded.name || 'Student',
+    };
+
+    // If UserModel is connected, fetch full user to verify existence & attach profile properties
+    try {
+      const userDoc = await UserModel.findById(userId).select('-passwordHash').lean();
+      if (userDoc) {
+        req.user.name = userDoc.name;
+        req.user.email = userDoc.email;
+        req.user.dailyHours = userDoc.dailyHours ?? 2;
+        req.user.theme = userDoc.theme || 'dark';
+        req.user.streak = userDoc.streak ?? 0;
+      }
+    } catch (_) {
+      // Continue with decoded claims if DB lookup throws
+    }
+
+    return next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
-    return res.status(500).json({ success: false, error: 'Authentication internal error.' });
+    return res.status(500).json({
+      success: false,
+      error: 'Authentication failed due to internal error.',
+    });
   }
 }
 
-/**
- * Helper to generate signed JWT token (Member B)
- */
 export function generateToken(payload, expiresIn = '7d') {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn });
+  const secret = process.env.JWT_SECRET || (process.env.NODE_ENV === 'test' ? 'studybuddy_secret_jwt_fallback_key_2026' : null);
+  if (!secret) {
+    throw new Error('JWT_SECRET is missing from environment.');
+  }
+  return jwt.sign(
+    {
+      id: payload.id || payload._id || payload.userId,
+      userId: payload.id || payload._id || payload.userId,
+      email: payload.email,
+      name: payload.name,
+    },
+    secret,
+    { expiresIn }
+  );
 }

@@ -187,7 +187,7 @@ export default function ChatMessageItem({ message }) {
 
                   {tc.tool === 'generate_flashcards' && (
                     <Link
-                      to="/flashcards"
+                      to="/app/flashcards"
                       className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-semibold whitespace-nowrap"
                     >
                       View Deck →

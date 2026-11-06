@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AppShell from './components/layout/AppShell';
 import ProtectedRoute from './components/layout/ProtectedRoute';
+import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ChatPage from './pages/ChatPage';
 import FlashcardsPage from './pages/FlashcardsPage';
@@ -10,38 +12,51 @@ import SubjectsPage from './pages/SubjectsPage';
 import TimerPage from './pages/TimerPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
-import LoginPage from './pages/LoginPage';
-import LandingPage from './pages/LandingPage';
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Member C — Public Landing Page */}
-        <Route path="/landing" element={<LandingPage />} />
+        {/* 1. Public Landing Page */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/landing" element={<Navigate to="/" replace />} />
 
-        {/* Dedicated Auth Page */}
+        {/* 2. Authentication Pages */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<LoginPage />} />
 
-        {/* Main Application Shell (Protected) */}
+        {/* 3. Protected Workspace (/app/*) */}
         <Route
-          path="/"
+          path="/app"
           element={
             <ProtectedRoute>
               <AppShell />
             </ProtectedRoute>
           }
         >
-          <Route index element={<DashboardPage />} />
-          <Route path="chat" element={<ChatPage />} />
-          <Route path="flashcards" element={<FlashcardsPage />} />
+          <Route index element={<Navigate to="/app/dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
           <Route path="planner" element={<PlannerPage />} />
           <Route path="subjects" element={<SubjectsPage />} />
+          <Route path="chat" element={<ChatPage />} />
+          <Route path="flashcards" element={<FlashcardsPage />} />
           <Route path="timer" element={<TimerPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="settings" element={<SettingsPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
+
+        {/* 4. Legacy route compatibility redirects to /app/* */}
+        <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
+        <Route path="/planner" element={<Navigate to="/app/planner" replace />} />
+        <Route path="/subjects" element={<Navigate to="/app/subjects" replace />} />
+        <Route path="/chat" element={<Navigate to="/app/chat" replace />} />
+        <Route path="/flashcards" element={<Navigate to="/app/flashcards" replace />} />
+        <Route path="/timer" element={<Navigate to="/app/timer" replace />} />
+        <Route path="/analytics" element={<Navigate to="/app/analytics" replace />} />
+        <Route path="/settings" element={<Navigate to="/app/settings" replace />} />
+
+        {/* 5. Catch-all fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

@@ -1,6 +1,6 @@
-# StudyBuddy — System Architecture & Implementation Boundaries
+# StudyBuddy — System Architecture & Implementation Specifications
 
-This document provides a comprehensive view of the **StudyBuddy** system architecture as implemented in the current codebase, highlighting real production modules vs. integration stubs.
+This document outlines the end-to-end multi-user system architecture of **StudyBuddy**, detailing the React 19 client, Node/Express backend, MongoDB Atlas persistence layer, and Google Gemini AI gateway.
 
 ---
 
@@ -10,115 +10,104 @@ This document provides a comprehensive view of the **StudyBuddy** system archite
 graph TB
     subgraph Frontend["React 19 + Vite Frontend (/client)"]
         direction TB
-        AppShell["App Shell & Navigation<br/>[REAL - Member A]"]
-        ChatUI["ChatInterface & FloatingChatWidget<br/>[REAL - Member A]"]
-        QuizUI["FlashcardDeck & QuizMode<br/>[REAL - Member A]"]
-        WeakBanner["WeakTopicsBanner<br/>[REAL - Member A]"]
+        Landing["Public Landing Page (/)"]
+        AuthUI["Auth Pages (/login, /signup)<br/>• Zod & Inline Feedback"]
+        Protected["ProtectedRoute (/app/*)<br/>• JWT Session Verification"]
         
-        PlannerUI["PlannerPage (Task Board)<br/>[STUBBED UI - Member C]"]
-        SubjectsUI["SubjectsPage (Syllabus)<br/>[STUBBED UI - Member C]"]
-        TimerUI["TimerPage (Pomodoro)<br/>[STUBBED UI - Member D]"]
-        AnalyticsUI["AnalyticsPage (KPIs & Charts)<br/>[STUBBED UI - Member D]"]
-        AuthUI["LoginPage (Auth Form)<br/>[REAL SHELL / STUBBED BACKEND]"]
+        subgraph Workspace["Private Student Workspace (/app/*)"]
+            DashboardUI["DashboardPage<br/>• Real KPIs & Today Tasks"]
+            PlannerUI["PlannerPage<br/>• Auto-Schedule & Reschedule"]
+            SubjectsUI["SubjectsPage<br/>• Subjects & Topics Management"]
+            ChatUI["ChatPage & FloatingAssistant<br/>• Global Chatbot Widget"]
+            FlashcardsUI["FlashcardsPage<br/>• 3D Cards & Active Quiz"]
+            TimerUI["TimerPage<br/>• Focus Pomodoro with Session DB Sync"]
+            AnalyticsUI["AnalyticsPage<br/>• Recharts Bar & Pie Visualizations"]
+            SettingsUI["SettingsPage<br/>• Target Hours & Profile"]
+        end
         
-        Store["Zustand Store (useStore.js)<br/>[REAL - Member A]"]
-        ApiClient["API Client (api.js with 401 Handler)<br/>[REAL - Member A]"]
+        Store["Zustand Store (useStore.js)<br/>• Reactive State Management"]
+        ApiClient["API Client (api.js)<br/>• JWT Bearer & 401 Interceptors"]
     end
 
     subgraph Backend["Node.js + Express Backend (/server)"]
         direction TB
-        AppServer["Express App (app.js)<br/>• CORS & Helmet<br/>• Rate Limiter (30 req/min)<br/>• Health Endpoint"]
+        AppServer["Express Gateway (app.js)<br/>• CORS, Helmet, Rate Limiting (30/min)<br/>• /api/health Monitor"]
+        AuthMiddleware["authMiddleware.js<br/>• JWT Verification & userId Scoping"]
         
-        subgraph RealSlice["Member 1 / Lead Real Modules"]
-            ChatRoutes["/api/chat Routes"]
-            QuizRoutes["/api/quiz Routes"]
-            ChatController["chatController.js"]
-            QuizController["quizController.js"]
-            ChatbotService["chatbotService.js<br/>• Timeout & Single Retry<br/>• 3-Turn Tool Loop<br/>• Friendly Fallback"]
-            ChatbotTools["chatbotTools.js<br/>• 4 Tool Handlers"]
-            ToolValidator["toolValidator.js<br/>• Schema & Date Validation"]
-            ContextBuilder["chatbotContext.js<br/>• Dynamic Schedule Ingestion"]
-            PlannerRepo["plannerRepository.js<br/>[SINGLE INTEGRATION POINT]"]
+        subgraph Controllers["REST Controllers & Services"]
+            AuthCtrl["authController.js<br/>• Register, Login, Me (Bcrypt + JWT)"]
+            UserCtrl["userController.js<br/>• Profile & Daily Hours"]
+            ChatCtrl["chatController.js & chatbotService.js<br/>• Gemini Gateway & Timeout/Retry"]
+            QuizCtrl["quizController.js & chatbotTools.js<br/>• Flashcards & Weak Topics"]
+            SchedulerCtrl["plannerController.js & scheduler.js<br/>• Pure Algorithmic Study Engine"]
+            SubjectCtrl["subjectController.js & taskController.js<br/>• Scoped CRUD Operations"]
+            SessionCtrl["sessionController.js & analyticsController.js<br/>• Pomodoro Logging & Recharts KPIs"]
         end
         
-        subgraph Stubs["Teammate Integration Contract Stubs"]
-            AuthStub["/api/auth/login & /register<br/>[STUBBED - Member B]"]
-            SchedulerStub["/api/planner/generate & /reschedule<br/>[STUBBED - Member B]"]
-            SubjectsStub["/api/subjects CRUD<br/>[STUBBED - Member C]"]
-            TasksStub["/api/tasks & /complete<br/>[STUBBED - Member C]"]
-            AnalyticsStub["/api/analytics/summary<br/>[STUBBED - Member D]"]
-        end
+        PlannerRepo["plannerRepository.js<br/>• Scoped Mongoose Data Layer"]
     end
 
-    subgraph Storage["Data & External Services"]
-        MockStore["mockPlannerStore.js<br/>(In-Memory Tasks, Subjects, Exams)"]
-        MongoModels["Mongoose Models<br/>• User, Subject, Task, Session [STUBBED - Member B]<br/>• ChatMessage, FlashcardQuiz [REAL - Member A]"]
-        GeminiAPI["Google Gemini 1.5 Flash API<br/>(or Local Smart Tutor Simulator)"]
+    subgraph Storage["Data Persistence & External Services"]
+        MongoAtlas["MongoDB Atlas Cloud Database<br/>• Users, Subjects, Topics, Tasks<br/>• StudySessions, Flashcards, ChatMessages"]
+        GeminiAPI["Google Gemini API<br/>• gemini-3.5-flash-lite / gemini-flash-latest<br/>• AbortController Gateway & Smart Fallback"]
     end
 
-    %% Frontend connections
-    AppShell --> ChatUI
-    AppShell --> QuizUI
-    AppShell --> WeakBanner
-    ChatUI --> Store
-    QuizUI --> Store
+    %% Client Flows
+    Landing --> AuthUI
+    AuthUI --> Protected
+    Protected --> Workspace
+    Workspace --> Store
     Store --> ApiClient
     ApiClient --> AppServer
 
-    %% Backend routes
-    AppServer --> ChatRoutes
-    AppServer --> QuizRoutes
-    AppServer --> AuthStub
-    AppServer --> SchedulerStub
-    AppServer --> SubjectsStub
-    AppServer --> TasksStub
-    AppServer --> AnalyticsStub
-
-    %% Chatbot Engine Flow
-    ChatRoutes --> ChatController
-    ChatController --> ChatbotService
-    ChatbotService --> ContextBuilder
-    ChatbotService --> ToolValidator
-    ChatbotService --> ChatbotTools
-    ChatbotService -.-> GeminiAPI
-    
-    %% Repository Integration
-    ContextBuilder --> PlannerRepo
-    ChatbotTools --> PlannerRepo
-    PlannerRepo --> MockStore
-    PlannerRepo -.-> MongoModels
-    QuizController --> MongoModels
+    %% Backend Flows
+    AppServer --> AuthMiddleware
+    AuthMiddleware --> Controllers
+    Controllers --> PlannerRepo
+    PlannerRepo --> MongoAtlas
+    ChatCtrl --> GeminiAPI
+    QuizCtrl --> GeminiAPI
 ```
 
 ---
 
-## 2. Implementation Status by Component
+## 2. Layer Specifications
 
-| Module / Layer | Component Path | Owner | Status | Details |
-|---|---|:---:|:---:|---|
-| **Chatbot Core** | `server/services/chatbotService.js` | Member A | **REAL** | AbortController 15s timeout, single retry on 429/5xx, fallback tutor, 3-turn tool loop |
-| **Tool Execution** | `server/services/chatbotTools.js` | Member A | **REAL** | `get_today_plan`, `create_task`, `reschedule_missed`, `generate_flashcards` |
-| **Tool Security** | `server/services/toolValidator.js` | Member A | **REAL** | Type validation, length caps, ISO date formatting, bounds checking |
-| **Context Ingestion** | `server/services/chatbotContext.js` | Member A | **REAL** | Delimited data injection, calendar midnight difference for exam countdowns |
-| **Integration Boundary**| `server/services/plannerRepository.js` | Member A | **REAL** | Clean data abstraction decoupling chatbot from database schemas |
-| **Flashcards & Quiz** | `client/src/components/flashcards/` | Member A | **REAL** | 3D interactive flip deck, multiple-choice quiz, weak-topic flagging |
-| **App Shell & Nav** | `client/src/components/layout/` | Member A | **REAL** | Responsive sidebar, navbar, protected route, global floating chat widget |
-| **Client Test Setup** | `client/src/test/smoke.test.jsx` | Member A | **REAL** | Vitest + React Testing Library smoke suite with 4 passing tests |
-| **Authentication** | `server/app.js` (stubs), `models/User.js` | Member B | **STUBBED** | Express stub routes return mock token; real bcrypt/JWT pending Member B |
-| **Data Models** | `server/models/` | Member B | **PARTIAL** | `ChatMessage` and `FlashcardQuiz` real; `Subject`, `Task`, `User` pending Member B |
-| **Auto-Scheduler** | `/api/planner/generate` | Member B | **STUBBED** | Stub endpoint returns simulated rebalancing |
-| **Calendar Grid UI** | `client/src/pages/PlannerPage.jsx` | Member C | **STUBBED** | Task board column preview wrapped in `TeammateModuleStub` |
-| **Syllabus CRUD UI** | `client/src/pages/SubjectsPage.jsx` | Member C | **STUBBED** | Subject list preview wrapped in `TeammateModuleStub` |
-| **Timer Logging** | `client/src/pages/TimerPage.jsx` | Member D | **STUBBED** | Local Pomodoro countdown with stub banner; session logging pending Member D |
-| **Analytics Recharts**| `client/src/pages/AnalyticsPage.jsx` | Member D | **STUBBED** | KPI preview wrapped in `TeammateModuleStub`; Recharts pending Member D |
+### 2.1 Presentation Layer (Frontend)
+- **Framework**: React 19 with Vite 8 bundling.
+- **Routing**: React Router 7 with route segregation:
+  - **Public Routes**: `/` (Marketing Landing), `/login` (Sign in), `/signup` (Sign up).
+  - **Protected Routes**: `/app/*` wrapped by `ProtectedRoute`. Unauthenticated visitors are redirected to `/login` with `from` location state preserved.
+- **State Management**: Zustand store (`useStore.js`) maintaining authenticated user identity, active subjects, scheduled tasks, flashcard decks, and floating assistant state.
 
----
+### 2.2 Application & Business Logic Layer (Backend)
+- **Runtime**: Node.js 25 (ES Modules) with Express 4.
+- **Security & Gateway**:
+  - `helmet`: HTTP header hardening.
+  - `cors`: Configured strictly for client domain.
+  - `express-rate-limit`: 30 requests per minute on `/api/chat` to protect against burst spam.
+  - `authMiddleware.js`: Validates standard `Authorization: Bearer <token>` headers, extracts `req.user.userId`, and rejects invalid/expired tokens with HTTP 401.
+- **Auto-Scheduler Engine (`server/services/scheduler.js`)**:
+  - Pure function receiving subjects, topics, overdue tasks, and daily hour constraints.
+  - Computes topic priority: $\text{Weight} = \text{Difficulty} \times \text{EstimatedHours}$.
+  - Urgency boost: Higher priority for closer exam deadlines.
+  - Revision buffer: Automatically reserves revision tasks 1–2 days prior to exam date.
+  - Exam boundary check: Topics are never scheduled on or after their exam date.
+  - Two-phase execution: Supports simulation (`commit: false`) and database persistence (`commit: true`).
 
-## 3. Teammate Swap-In Protocol
+### 2.3 AI & Tutor Engine (`server/services/chatbotService.js`)
+- **Model**: Google Gemini (`gemini-3.5-flash-lite`).
+- **Resilience Policy**:
+  - `AbortController` timeout (15,000ms default, configurable via `LLM_TIMEOUT_MS`).
+  - Exactly one retry on transient failures (HTTP 429, 5xx, timeouts, network drops).
+  - Instant deterministic fallback tutor response on fatal failures (guarantees zero HTTP 500 errors to client).
+- **Tool Calling Architecture**:
+  - 4 server-validated tools: `get_today_plan`, `create_task`, `reschedule_missed`, `generate_flashcards`.
+  - Tools execute **exclusively** when emitted by the model as structured function calls.
+  - Delimited boundary enforcement (`<<<STUDENT_INPUT>>>`, `<<<PLANNER_CONTEXT>>>`, `<<<TOOL_RESULT>>>`).
+  - Capped at 3 tool iterations per conversational turn.
 
-Member B can replace the in-memory store with MongoDB in one step:
-1. Open [`server/services/plannerRepository.js`](file:///Users/monika/fsd%20project/server/services/plannerRepository.js).
-2. Replace `mockTasks.filter(...)` with `await TaskModel.find({ userId })`.
-3. Replace `mockSubjects.map(...)` with `await SubjectModel.find({ userId })`.
-4. Zero changes will be required in `chatbotService.js`, `chatbotTools.js`, `chatbotContext.js`, or the frontend!
-
+### 2.4 Persistence Layer (Database)
+- **Host**: MongoDB Atlas Cloud Cluster.
+- **ODM**: Mongoose 8 with strict schemas, timestamps, and compound indexing on `userId`.
+- **In-Memory Testing**: `mongodb-memory-server` creates ephemeral, isolated databases during Jest and Vitest test runs, guaranteeing zero test pollution on production Atlas collections.

@@ -29,11 +29,11 @@
 
 ---
 
-### Slide 4: System Architecture & Decoupled Team Slices
-- **Frontend Layer:** React 19 + Vite, Tailwind CSS v4, Zustand centralized state, responsive sidebar and floating assistant.
+### Slide 4: System Architecture & Multi-User Decoupling
+- **Frontend Layer:** React 19 + Vite, Tailwind CSS v4, Zustand centralized state, public landing page, dedicated auth routes (`/login`, `/signup`), and protected student workspaces (`/app/*`).
 - **Backend Layer:** Node.js Express ESM REST API, Helmet security headers, rate limiting (30 req/min), CORS.
-- **Lead Modules (100% Real & Verified):** AI Chatbot, 4 Tool Calling actions, Schema Validator, Flashcard & Quiz engine, App Shell & Routing.
-- **Decoupling Strategy (`plannerRepository.js`):** A single data-access boundary decoupling Member 1's chatbot from Member B's database models, allowing parallel teammate development without merge conflicts.
+- **Persistence & Cloud:** Real MongoDB Atlas cluster (`studybuddy` database), 8 Mongoose schemas with compound indexes, fail-fast startup checks.
+- **Multi-Tenant Security:** Strict `userId` scoping across every controller and query—guaranteeing zero cross-tenant data leakage.
 
 ---
 
@@ -80,29 +80,31 @@
 ---
 
 ### Slide 10: Verification, Automated Testing & CI Pipelines
-- **Tri-Part Verified Test Strategy:**
-  1. *Client Smoke Tests (Vitest + React Testing Library):* 4 passing tests verifying message dispatch, error retry, card flip, and quiz feedback.
-  2. *Server Jest Suite (Jest + Supertest):* 31 automated tests across 3 suites verifying validation, rate limits, injection blocking, tool schemas, and timeout retry.
-  3. *Chatbot Programmatic Runner (21 End-to-End Cases):* Real assertions verifying schedule awareness, tools, and fallback behavior.
-- **GitHub Actions CI (`ci.yml`):** Automatically executes linting, Vite build, client tests, server tests, and chatbot test runner on every commit.
+- **Complete Test Matrix (91 / 91 Tests Passing — 100%):**
+  1. *Server Integration Tests (Jest + Supertest):* 55 passing tests across 5 suites (`realBackend`, `chat`, `quiz`, `tools`, `scheduler`) verifying auth, isolation, scheduling, and rate limiting.
+  2. *Client Integration Tests (Vitest + RTL):* 9 passing tests verifying routing, protected redirects, login validation, 3D card flips, and quiz mode.
+  3. *Chatbot Programmatic Runner (Google Gemini):* 21 passing test cases against live `gemini-3.5-flash-lite` model.
+  4. *Deployment Smoke Suite:* 6 production checks validating live server health, auth lifecycle, tenant isolation, and session persistence.
 
 ---
 
 ### Slide 11: Live Demonstration Highlights
 - **Demo Walkthrough (5-Minute Script):**
-  1. *Dashboard & Countdown:* Target exam countdown badge and priority task board.
+  1. *Public Landing & Real Auth:* Sign in with demo student credentials (`student@studybuddy.dev`).
   2. *Schedule-Aware Chat:* "What should I study today?" -> automatic context injection and `get_today_plan` tool execution.
-  3. *Auto-Rebalancing:* "I missed yesterday, fix my plan." -> rolls forward tasks, auto-refreshes planner without page reload.
-  4. *Active Recall Deck:* 3D flashcard flip, quiz score calculation, and weak-topic detection banner.
-  5. *Security Demonstration:* Injection prompt override blocked safely with friendly boundary notice.
+  3. *Auto-Rebalancing:* "I missed yesterday, fix my plan." -> rolls forward overdue tasks.
+  4. *Pomodoro Timer:* 6s quick test automatically persists completed `StudySession` to MongoDB Atlas.
+  5. *Recharts Analytics:* Live 7-day study hours bar chart and subject distribution pie chart.
+  6. *Active Recall Deck:* 3D flashcard flip, quiz score calculation, and weak-topic detection banner.
 
 ---
 
-### Slide 12: Architectural Limitations & Future Scope
-- **Current Limitations (Honest Scoping):**
-  - Database currently uses `mockPlannerStore.js` pending Member B's MongoDB connection.
-  - JWT auth uses mock user injection pending Member B's bcrypt/JWT middleware.
-  - Teammate pages feature interactive stubs preserving the unified application shell.
+### Slide 12: Production Readiness & Future Scope
+- **Production Highlights:**
+  - Real MongoDB Atlas cloud database with Mongoose schemas and compound indexes.
+  - Zero mock data or hardcoded arrays remaining in runtime code.
+  - Fail-fast environment variable validation and graceful LLM fallback.
+  - Render blueprint (`render.yaml`) and Vercel SPA routing (`vercel.json`).
 - **Future Scope:**
   - Multi-modal syllabus ingestion (RAG chunking of lecture PDF slides).
   - Voice-enabled tutoring sessions via Gemini Live API.
