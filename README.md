@@ -4,6 +4,18 @@
 > Featuring dedicated public landing, student authentication, private workspaces with zero cross-tenant data leakage, pure algorithmic exam scheduling, real Pomodoro timer logging, Recharts analytics, and Google Gemini AI tutoring with tool calling.
 
 ---
+## 👥 Contributors & Contributions
+
+| Team Member | Contributions |
+|---|---|
+| **Monika** | **Team Lead – Full-Stack Development & AI Integration.** Led the subsequent full-stack implementation of StudyBuddy, including MongoDB database architecture, Mongoose models, JWT authentication, password hashing, protected APIs and multi-user data isolation. Implemented the study scheduling algorithm and task-rescheduling logic. Connected frontend modules to persistent backend APIs, replacing mock data. Integrated the Gemini-powered AI assistant with dynamic student context and tool-based actions (`get_today_plan`, `create_task`, `reschedule_missed`, `generate_flashcards`). Also handled dashboard analytics integration, study-session tracking, flashcards, quizzes, deployment configuration, database seeding, testing, CI/CD, security improvements and technical documentation. |
+| **Member B** | Contributed to the initial backend and scheduler prototype, including the initial structure for authentication, database models, task/subject APIs, scheduling and reminders.. |
+| **Member C** | Contributed to the initial planner interface and subject-management prototype, including calendar UI, drag-and-drop planning, syllabus management and plan preview interfaces.. |
+| **Member D** | Contributed to the initial dashboard prototype, including preliminary dashboard and analytics-interface components. |
+
+### Development & Integration Note
+
+The initial team prototype served as the foundation for the project. The subsequent full-stack implementation, integration of persistent database functionality, AI-powered features, deployment, testing, CI/CD and security improvements were led and implemented by **Monika**.
 
 ## 🌟 Overview & System Highlights
 
