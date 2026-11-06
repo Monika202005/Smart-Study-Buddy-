@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Clock, Shield, Database, Cpu, CheckCircle } from 'lucide-react';
+import { User, Clock, Cpu, CheckCircle } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 export default function SettingsPage() {
@@ -46,11 +46,11 @@ export default function SettingsPage() {
           </div>
 
           <div>
-            <label className="block text-slate-400 mb-1">Project Role</label>
+            <label className="block text-slate-400 mb-1">Account Role</label>
             <input
               type="text"
               readOnly
-              value="Member 1 — Team Lead + AI Chatbot & Quiz"
+              value={user.role || 'Student'}
               className="w-full bg-slate-950 text-indigo-300 font-semibold px-3.5 py-2.5 rounded-xl border border-indigo-500/30"
             />
           </div>

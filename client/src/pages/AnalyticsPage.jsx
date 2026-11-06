@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, CheckCircle, Clock, Flame, Award } from 'lucide-react';
+import { TrendingUp, Flame } from 'lucide-react';
 import TeammateModuleStub from '../components/layout/TeammateModuleStub';
 import { fetchAnalyticsSummaryApi } from '../services/api';
 

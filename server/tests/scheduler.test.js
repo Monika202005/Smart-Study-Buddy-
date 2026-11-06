@@ -1,4 +1,5 @@
-import { test, describe } from 'node:test';
+const testRunner = typeof test === 'function' ? test : (await import('node:test')).test;
+const describeRunner = typeof describe === 'function' ? describe : (await import('node:test')).describe;
 import assert from 'node:assert/strict';
 import {
   calculateTopicWeight,
@@ -7,9 +8,9 @@ import {
   rescheduleMissedTasksService,
 } from '../services/schedulerService.js';
 
-describe('Member B: Auto-Scheduler Algorithm Unit Tests (Section 8, 14 & 20)', () => {
+describeRunner('Member B: Auto-Scheduler Algorithm Unit Tests (Section 8, 14 & 20)', () => {
 
-  test('Weighting Rule 1: Topic weight is computed as difficulty * estimatedHours', () => {
+  testRunner('Weighting Rule 1: Topic weight is computed as difficulty * estimatedHours', () => {
     // difficulty 3, estimatedHours 4 -> weight 12
     const weight1 = calculateTopicWeight(3, 4);
     assert.equal(weight1, 12, 'Weight must equal 3 * 4');
@@ -19,7 +20,7 @@ describe('Member B: Auto-Scheduler Algorithm Unit Tests (Section 8, 14 & 20)', (
     assert.equal(weight2, 2, 'Weight must equal 1 * 2');
   });
 
-  test('Urgency Rule 3: Closer exams receive higher priority/urgency scores', () => {
+  testRunner('Urgency Rule 3: Closer exams receive higher priority/urgency scores', () => {
     const today = new Date();
     const in3Days = new Date(today.getTime() + 3 * 86400000).toISOString().split('T')[0];
     const in12Days = new Date(today.getTime() + 12 * 86400000).toISOString().split('T')[0];
@@ -33,7 +34,7 @@ describe('Member B: Auto-Scheduler Algorithm Unit Tests (Section 8, 14 & 20)', (
     );
   });
 
-  test('Capacity Rule 4: No day exceeds user daily hours limit with fixed inputs (3 subjects, 4 hours/day)', async () => {
+  testRunner('Capacity Rule 4: No day exceeds user daily hours limit with fixed inputs (3 subjects, 4 hours/day)', async () => {
     const dailyLimit = 4;
     const plan = await generateAutoSchedule('test_user_unit', dailyLimit);
 
@@ -54,7 +55,7 @@ describe('Member B: Auto-Scheduler Algorithm Unit Tests (Section 8, 14 & 20)', (
     }
   });
 
-  test('Revision Rule 2 & 5: Revision tasks appear reserved 1-2 days before exams', async () => {
+  testRunner('Revision Rule 2 & 5: Revision tasks appear reserved 1-2 days before exams', async () => {
     const plan = await generateAutoSchedule('test_user_unit', 4);
     const revisionTasks = plan.tasks.filter(t => t.type === 'revision');
 
@@ -66,7 +67,7 @@ describe('Member B: Auto-Scheduler Algorithm Unit Tests (Section 8, 14 & 20)', (
     });
   });
 
-  test('Rebalancing Rule 6: Overdue tasks roll forward to today or tomorrow', async () => {
+  testRunner('Rebalancing Rule 6: Overdue tasks roll forward to today or tomorrow', async () => {
     const result = await rescheduleMissedTasksService('test_user_unit');
     assert.ok(result.success, 'Reschedule operation must succeed');
 

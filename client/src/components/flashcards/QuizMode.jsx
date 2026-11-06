@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle, XCircle, Trophy, RotateCcw, Bot, ArrowRight, Sparkles } from 'lucide-react';
+import { CheckCircle, XCircle, Trophy, RotateCcw, Bot, ArrowRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useStore } from '../../store/useStore';
 

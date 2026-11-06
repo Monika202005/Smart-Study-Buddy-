@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bot, User, Copy, Check, Calendar, CheckCircle2, RotateCcw, PlusCircle, BrainCircuit } from 'lucide-react';
+import { Bot, User, Copy, Check, Calendar, RotateCcw, PlusCircle, BrainCircuit } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 /**

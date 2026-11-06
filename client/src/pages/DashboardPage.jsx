@@ -1,26 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Sparkles,
   Calendar,
   Flame,
   CheckCircle2,
   Clock,
   ArrowRight,
   Bot,
-  Layers,
-  BookOpen,
   BrainCircuit,
-  TrendingUp,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../store/useStore';
 import { fetchTasksApi, fetchSubjectsApi, toggleTaskCompleteApi } from '../services/api';
+import { calculateCalendarDaysLeft, formatDaysLeftLabel } from '../utils/dateUtils';
 
 export default function DashboardPage() {
   const { user, openChatWithPrompt } = useStore();
   const [tasks, setTasks] = useState([]);
   const [subjects, setSubjects] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
@@ -57,6 +54,18 @@ export default function DashboardPage() {
   const todayTasks = tasks.filter((t) => t.scheduledDate === todayStr);
   const completedToday = todayTasks.filter((t) => t.completed).length;
 
+  const upcomingSorted = [...subjects]
+    .map((s) => ({
+      ...s,
+      daysLeft: calculateCalendarDaysLeft(s.examDate),
+    }))
+    .sort((a, b) => a.daysLeft - b.daysLeft);
+
+  const nearestExam = upcomingSorted[0];
+  const nearestExamText = nearestExam
+    ? `${nearestExam.name} (${formatDaysLeftLabel(nearestExam.daysLeft)})`
+    : 'Upcoming exams';
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Hero Welcome Card with AI Illustration */}
@@ -65,17 +74,12 @@ export default function DashboardPage() {
 
         <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="max-w-xl text-center md:text-left">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-semibold mb-3">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Full Stack Development Project &bull; Team of 4</span>
-            </div>
-
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-tight">
               Welcome back, <span className="bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 bg-clip-text text-transparent">{user.name}</span>!
             </h1>
 
             <p className="text-xs sm:text-sm text-slate-300 mt-2 leading-relaxed">
-              Your next major exam is <strong className="text-indigo-300">CS301 (Data Structures) in 5 days</strong>. You have <strong>{todayTasks.length} study tasks</strong> planned for today.
+              Your next major exam is <strong className="text-indigo-300">{nearestExamText}</strong>. You have <strong>{todayTasks.length} study tasks</strong> planned for today.
             </p>
 
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-5">
@@ -114,7 +118,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Quick Metrics Bar (Member D Preview) */}
+      {/* Quick Metrics Bar */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800/80">
           <div className="flex items-center justify-between text-slate-400 text-xs">
@@ -237,7 +241,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="space-y-3">
-            {subjects.map((sub, idx) => (
+            {upcomingSorted.map((sub, idx) => (
               <div
                 key={sub.id || idx}
                 className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800 flex items-center justify-between gap-3 text-xs"
@@ -247,7 +251,7 @@ export default function DashboardPage() {
                   <p className="text-[10px] text-slate-400">Exam: {sub.examDate}</p>
                 </div>
                 <span className="px-2 py-1 rounded-xl bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-[11px] font-bold shrink-0">
-                  {idx === 0 ? 'In 5 Days' : idx === 1 ? 'In 12 Days' : 'In 19 Days'}
+                  {formatDaysLeftLabel(sub.daysLeft)}
                 </span>
               </div>
             ))}

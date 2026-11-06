@@ -18,9 +18,14 @@ dist-ssr/
 # Environment variables & secrets (CRITICAL: never commit .env)
 .env
 .env*
+.env.*
 **/.env
 **/.env*
 !.env.example
+server/.env
+server/.env.*
+client/.env
+client/.env.*
 
 # IDE & OS files
 push_to_github.bat

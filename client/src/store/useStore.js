@@ -9,6 +9,9 @@ import {
   fetchWeakTopicsApi,
   loginUserApi,
   registerUserApi,
+  fetchTasksApi,
+  fetchSubjectsApi,
+  checkServerHealth,
 } from '../services/api.js';
 
 const initialToken = localStorage.getItem('studybuddy_token');
@@ -20,7 +23,7 @@ const initialUser = localStorage.getItem('studybuddy_user')
       email: 'monika@studybuddy.dev',
       dailyHours: 4,
       streak: 4,
-      role: 'Lead (Member 1)',
+      role: 'Student',
     };
 
 export const useStore = create((set, get) => ({
@@ -87,6 +90,8 @@ export const useStore = create((set, get) => ({
   isChatLoading: false,
   chatError: null,
   floatingChatOpen: false,
+  aiMode: 'Offline tutor', // 'Gemini' | 'Offline tutor'
+  lastUserMessage: '',
 
   // Flashcards & Quiz State (Member 1)
   flashcards: [],
@@ -94,8 +99,50 @@ export const useStore = create((set, get) => ({
   weakTopics: [],
   flashcardFilter: 'all', // 'all' | 'incorrect' | 'untested' | 'correct'
 
+  // Planner Data Cache & Sync
+  tasks: [],
+  subjects: [],
+  isTasksLoading: false,
+  plannerLastUpdated: Date.now(),
+
   // Server health state
   isServerConnected: true,
+
+  checkAiMode: async () => {
+    try {
+      const health = await checkServerHealth();
+      if (health && health.aiMode) {
+        set({ aiMode: health.aiMode, isServerConnected: health.status === 'online' });
+      }
+    } catch {
+      set({ aiMode: 'Offline tutor', isServerConnected: false });
+    }
+  },
+
+  loadTasks: async () => {
+    try {
+      set({ isTasksLoading: true });
+      const data = await fetchTasksApi();
+      if (data && data.tasks) {
+        set({ tasks: data.tasks });
+      }
+    } catch (e) {
+      console.warn('Failed to load tasks:', e);
+    } finally {
+      set({ isTasksLoading: false });
+    }
+  },
+
+  loadSubjects: async () => {
+    try {
+      const data = await fetchSubjectsApi();
+      if (data && data.subjects) {
+        set({ subjects: data.subjects });
+      }
+    } catch (e) {
+      console.warn('Failed to load subjects:', e);
+    }
+  },
 
   // Actions: Chat
   loadChatHistory: async () => {
@@ -105,6 +152,7 @@ export const useStore = create((set, get) => ({
       if (data.success && data.messages) {
         set({ chatMessages: data.messages });
       }
+      get().checkAiMode();
     } catch (err) {
       console.warn('Could not load chat history:', err.message);
       set({ chatError: 'Could not load chat history. Using initial greeting.' });
@@ -129,6 +177,7 @@ export const useStore = create((set, get) => ({
       chatMessages: [...state.chatMessages, tempUserMsg],
       isChatLoading: true,
       chatError: null,
+      lastUserMessage: trimmed,
     }));
 
     try {
@@ -146,11 +195,19 @@ export const useStore = create((set, get) => ({
         set((state) => ({
           chatMessages: [...state.chatMessages, assistantMsg],
           isChatLoading: false,
+          ...(data.aiMode ? { aiMode: data.aiMode } : {}),
         }));
 
         // Refresh weak topics or flashcards if tool generated cards
         if (data.toolCalls?.some((t) => t.tool === 'generate_flashcards')) {
           get().loadFlashcards();
+          get().loadWeakTopics();
+        }
+
+        // Auto-refresh planner & dashboard if tool modified tasks
+        if (data.toolCalls?.some((t) => t.tool === 'create_task' || t.tool === 'reschedule_missed')) {
+          set({ plannerLastUpdated: Date.now() });
+          get().loadTasks();
         }
       }
     } catch (err) {
@@ -158,6 +215,14 @@ export const useStore = create((set, get) => ({
         isChatLoading: false,
         chatError: err.message || 'Unable to connect to StudyBuddy AI Tutor. Please try again.',
       });
+    }
+  },
+
+  retryLastMessage: () => {
+    const last = get().lastUserMessage;
+    if (last) {
+      set({ chatError: null });
+      get().sendUserMessage(last);
     }
   },
 
@@ -207,8 +272,6 @@ export const useStore = create((set, get) => ({
         }));
         return data.cards;
       }
-    } catch (err) {
-      throw err;
     } finally {
       set({ isFlashcardsLoading: false });
     }
@@ -244,3 +307,10 @@ export const useStore = create((set, get) => ({
     set({ flashcardFilter: filter });
   },
 }));
+
+// Listen for global unauthorized events dispatched by API client
+if (typeof window !== 'undefined') {
+  window.addEventListener('studybuddy:unauthorized', () => {
+    useStore.setState({ isAuthenticated: false, token: null });
+  });
+}

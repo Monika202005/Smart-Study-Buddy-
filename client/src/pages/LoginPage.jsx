@@ -2,15 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Sparkles,
-  Bot,
   Mail,
   Lock,
   User,
-  Clock,
   Eye,
   EyeOff,
   ArrowRight,
-  ShieldCheck,
   AlertCircle,
   Zap,
 } from 'lucide-react';
@@ -21,9 +18,9 @@ export default function LoginPage() {
   const { login, register, isAuthLoading, authError } = useStore();
 
   const [mode, setMode] = useState('login'); // 'login' | 'signup'
-  const [email, setEmail] = useState('monika@studybuddy.dev');
-  const [password, setPassword] = useState('studybuddy123');
-  const [name, setName] = useState('Monika Sharma');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [dailyHours, setDailyHours] = useState(4);
   const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState(null);
@@ -228,12 +225,8 @@ export default function LoginPage() {
               className="w-full py-2.5 px-3 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-sm"
             >
               <Zap className="w-4 h-4 text-amber-400" />
-              <span>One-Click Demo Login (Monika Sharma)</span>
+              <span>One-Click Demo Login</span>
             </button>
-
-            <p className="text-[11px] text-center text-slate-500">
-              Full Stack Team of 4 Project &bull; Member C & B Auth Architecture
-            </p>
           </div>
         </div>
 

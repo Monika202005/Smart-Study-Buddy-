@@ -5,7 +5,10 @@
 
 const BASE_URL = '/api';
 
-function getAuthHeaders() {
+/**
+ * Helper to get authentication headers from local storage.
+ */
+export function getAuthHeaders() {
   const token = localStorage.getItem('studybuddy_token') || 'mock_jwt_token_studybuddy_monika';
   return {
     'Content-Type': 'application/json',
@@ -13,9 +16,50 @@ function getAuthHeaders() {
   };
 }
 
+/**
+ * Global 401 handler: clears the token and user session,
+ * and notifies components/store to redirect to /login.
+ */
+export function handleUnauthorized() {
+  localStorage.removeItem('studybuddy_token');
+  localStorage.removeItem('studybuddy_user');
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('studybuddy:unauthorized'));
+  }
+}
+
+/**
+ * Standardized fetch wrapper with JWT attachment and 401 session clearance.
+ */
+export async function apiFetch(url, options = {}) {
+  const token = localStorage.getItem('studybuddy_token') || 'mock_jwt_token_studybuddy_monika';
+  const base =
+    typeof window !== 'undefined' && window.location?.origin && window.location.origin !== 'null'
+      ? window.location.origin
+      : 'http://localhost:5173';
+  const path = url.startsWith('/api') ? url : `${BASE_URL}${url.startsWith('/') ? url : `/${url}`}`;
+  const fullUrl = url.startsWith('http') ? url : `${base}${path}`;
+
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers || {}),
+  };
+
+  const res = await fetch(fullUrl, { ...options, headers });
+
+  if (res.status === 401) {
+    handleUnauthorized();
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || 'Session expired or unauthorized. Please log in again.');
+  }
+
+  return res;
+}
+
 export async function checkServerHealth() {
   try {
-    const res = await fetch(`${BASE_URL}/health`);
+    const res = await apiFetch('/health');
     return await res.json();
   } catch (err) {
     console.warn('Health check failed:', err.message);
@@ -28,9 +72,8 @@ export async function checkServerHealth() {
 // ==========================================
 
 export async function sendChatMessage(message, userId = 'default_student_1') {
-  const res = await fetch(`${BASE_URL}/chat`, {
+  const res = await apiFetch('/chat', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message, userId }),
   });
 
@@ -43,13 +86,13 @@ export async function sendChatMessage(message, userId = 'default_student_1') {
 }
 
 export async function fetchChatHistory(userId = 'default_student_1', limit = 50) {
-  const res = await fetch(`${BASE_URL}/chat/history?userId=${encodeURIComponent(userId)}&limit=${limit}`);
+  const res = await apiFetch(`/chat/history?userId=${encodeURIComponent(userId)}&limit=${limit}`);
   if (!res.ok) throw new Error('Failed to load chat history');
   return await res.json();
 }
 
 export async function clearChatHistoryApi(userId = 'default_student_1') {
-  const res = await fetch(`${BASE_URL}/chat/history?userId=${encodeURIComponent(userId)}`, {
+  const res = await apiFetch(`/chat/history?userId=${encodeURIComponent(userId)}`, {
     method: 'DELETE',
   });
   if (!res.ok) throw new Error('Failed to clear chat history');
@@ -62,15 +105,14 @@ export async function clearChatHistoryApi(userId = 'default_student_1') {
 
 export async function fetchFlashcardsApi(filters = {}) {
   const query = new URLSearchParams(filters).toString();
-  const res = await fetch(`${BASE_URL}/quiz/flashcards${query ? `?${query}` : ''}`);
+  const res = await apiFetch(`/quiz/flashcards${query ? `?${query}` : ''}`);
   if (!res.ok) throw new Error('Failed to load flashcards');
   return await res.json();
 }
 
 export async function generateQuizApi(topic, subject, count = 3) {
-  const res = await fetch(`${BASE_URL}/quiz/generate`, {
+  const res = await apiFetch('/quiz/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ topic, subject, count }),
   });
   if (!res.ok) {
@@ -81,9 +123,8 @@ export async function generateQuizApi(topic, subject, count = 3) {
 }
 
 export async function recordQuizResultApi(cardId, result, selectedOption = null) {
-  const res = await fetch(`${BASE_URL}/quiz/result`, {
+  const res = await apiFetch('/quiz/result', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cardId, result, selectedOption }),
   });
   if (!res.ok) throw new Error('Failed to record result');
@@ -91,7 +132,7 @@ export async function recordQuizResultApi(cardId, result, selectedOption = null)
 }
 
 export async function fetchWeakTopicsApi() {
-  const res = await fetch(`${BASE_URL}/quiz/weak-topics`);
+  const res = await apiFetch('/quiz/weak-topics');
   if (!res.ok) throw new Error('Failed to load weak topics');
   return await res.json();
 }
@@ -101,9 +142,8 @@ export async function fetchWeakTopicsApi() {
 // ==========================================
 
 export async function loginUserApi(email, password) {
-  const res = await fetch(`${BASE_URL}/auth/login`, {
+  const res = await apiFetch('/auth/login', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
   if (!res.ok) {
@@ -114,9 +154,8 @@ export async function loginUserApi(email, password) {
 }
 
 export async function registerUserApi(userData) {
-  const res = await fetch(`${BASE_URL}/auth/register`, {
+  const res = await apiFetch('/auth/register', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(userData),
   });
   if (!res.ok) {
@@ -132,16 +171,13 @@ export async function registerUserApi(userData) {
 
 export async function fetchTasksApi(params = {}) {
   const query = new URLSearchParams(params).toString();
-  const res = await fetch(`${BASE_URL}/tasks${query ? `?${query}` : ''}`, {
-    headers: getAuthHeaders(),
-  });
+  const res = await apiFetch(`/tasks${query ? `?${query}` : ''}`);
   return await res.json();
 }
 
 export async function createTaskApi(taskData) {
-  const res = await fetch(`${BASE_URL}/tasks`, {
+  const res = await apiFetch('/tasks', {
     method: 'POST',
-    headers: getAuthHeaders(),
     body: JSON.stringify(taskData),
   });
   if (!res.ok) {
@@ -152,17 +188,15 @@ export async function createTaskApi(taskData) {
 }
 
 export async function toggleTaskCompleteApi(taskId) {
-  const res = await fetch(`${BASE_URL}/tasks/${taskId}/complete`, {
+  const res = await apiFetch(`/tasks/${taskId}/complete`, {
     method: 'PATCH',
-    headers: getAuthHeaders(),
   });
   return await res.json();
 }
 
 export async function rescheduleTaskApi(taskId, scheduledDate) {
-  const res = await fetch(`${BASE_URL}/tasks/${taskId}`, {
+  const res = await apiFetch(`/tasks/${taskId}`, {
     method: 'PUT',
-    headers: getAuthHeaders(),
     body: JSON.stringify({ scheduledDate }),
   });
   if (!res.ok) {
@@ -173,17 +207,15 @@ export async function rescheduleTaskApi(taskId, scheduledDate) {
 }
 
 export async function triggerGeneratePlanApi() {
-  const res = await fetch(`${BASE_URL}/planner/generate`, {
+  const res = await apiFetch('/planner/generate', {
     method: 'POST',
-    headers: getAuthHeaders(),
   });
   return await res.json();
 }
 
 export async function triggerRescheduleMissedApi() {
-  const res = await fetch(`${BASE_URL}/planner/reschedule-missed`, {
+  const res = await apiFetch('/planner/reschedule-missed', {
     method: 'POST',
-    headers: getAuthHeaders(),
   });
   return await res.json();
 }
@@ -193,16 +225,13 @@ export async function triggerRescheduleMissedApi() {
 // ==========================================
 
 export async function fetchSubjectsApi() {
-  const res = await fetch(`${BASE_URL}/subjects`, {
-    headers: getAuthHeaders(),
-  });
+  const res = await apiFetch('/subjects');
   return await res.json();
 }
 
 export async function createSubjectApi(data) {
-  const res = await fetch(`${BASE_URL}/subjects`, {
+  const res = await apiFetch('/subjects', {
     method: 'POST',
-    headers: getAuthHeaders(),
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -213,18 +242,16 @@ export async function createSubjectApi(data) {
 }
 
 export async function deleteSubjectApi(subjectId) {
-  const res = await fetch(`${BASE_URL}/subjects/${subjectId}`, {
+  const res = await apiFetch(`/subjects/${subjectId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(),
   });
   if (!res.ok) throw new Error('Failed to delete subject');
   return await res.json();
 }
 
 export async function createTopicApi(subjectId, data) {
-  const res = await fetch(`${BASE_URL}/subjects/${subjectId}/topics`, {
+  const res = await apiFetch(`/subjects/${subjectId}/topics`, {
     method: 'POST',
-    headers: getAuthHeaders(),
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -235,9 +262,8 @@ export async function createTopicApi(subjectId, data) {
 }
 
 export async function updateTopicStatusApi(topicId, status) {
-  const res = await fetch(`${BASE_URL}/topics/${topicId}`, {
+  const res = await apiFetch(`/topics/${topicId}`, {
     method: 'PUT',
-    headers: getAuthHeaders(),
     body: JSON.stringify({ status }),
   });
   if (!res.ok) throw new Error('Failed to update topic status');
@@ -245,9 +271,8 @@ export async function updateTopicStatusApi(topicId, status) {
 }
 
 export async function deleteTopicApi(topicId) {
-  const res = await fetch(`${BASE_URL}/topics/${topicId}`, {
+  const res = await apiFetch(`/topics/${topicId}`, {
     method: 'DELETE',
-    headers: getAuthHeaders(),
   });
   if (!res.ok) throw new Error('Failed to delete topic');
   return await res.json();
@@ -258,6 +283,6 @@ export async function deleteTopicApi(topicId) {
 // ==========================================
 
 export async function fetchAnalyticsSummaryApi() {
-  const res = await fetch(`${BASE_URL}/analytics/summary`);
+  const res = await apiFetch('/analytics/summary');
   return await res.json();
 }

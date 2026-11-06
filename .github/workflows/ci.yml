@@ -10,6 +10,9 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    env:
+      NODE_OPTIONS: --experimental-vm-modules
+
     steps:
     - uses: actions/checkout@v4
 
@@ -17,17 +20,29 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: 20.x
+        cache: 'npm'
 
-    - name: Install Root & Client & Server Dependencies
+    - name: Install Dependencies
       run: |
         npm install
-        cd client && npm install
-        cd ../server && npm install
+        npm run install:all
+
+    - name: Lint Frontend
+      run: |
+        cd client && npm run lint
 
     - name: Build Frontend
       run: |
         cd client && npm run build
 
-    - name: Test LLM Script Syntax
+    - name: Run Client Smoke Tests (Vitest)
       run: |
-        cd server && node --check server.js
+        cd client && npm test
+
+    - name: Run Server Test Suite (Jest Supertest)
+      run: |
+        cd server && npm test
+
+    - name: Run Programmatic Chatbot Test Runner (21 Cases)
+      run: |
+        node server/scripts/run-chat-tests.js

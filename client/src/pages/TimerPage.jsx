@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, Coffee, CheckCircle, Bot } from 'lucide-react';
+import { Play, Pause, RotateCcw } from 'lucide-react';
 import TeammateModuleStub from '../components/layout/TeammateModuleStub';
-import { useStore } from '../store/useStore';
 
 export default function TimerPage() {
-  const { openChatWithPrompt } = useStore();
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [mode, setMode] = useState('focus'); // 'focus' | 'break'
