@@ -18,11 +18,24 @@ import { useStore } from '../../store/useStore';
 import { calculateCalendarDaysLeft, formatDaysLeftLabel } from '../../utils/dateUtils';
 
 export default function Sidebar({ mobileOpen, onClose }) {
-  const { openChatWithPrompt } = useStore();
+  const { user, subjects, openChatWithPrompt } = useStore();
 
-  const targetExamDateStr = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-  const targetDaysLeft = calculateCalendarDaysLeft(targetExamDateStr);
-  const targetDaysLabel = formatDaysLeftLabel(targetDaysLeft);
+  const sortedSubjects = [...(subjects || [])]
+    .filter((s) => s.examDate)
+    .map((s) => ({
+      ...s,
+      daysLeft: calculateCalendarDaysLeft(s.examDate),
+    }))
+    .sort((a, b) => a.daysLeft - b.daysLeft);
+
+  const nearestExam = sortedSubjects[0];
+  const targetDaysLabel = nearestExam
+    ? formatDaysLeftLabel(nearestExam.daysLeft)
+    : '5 Days';
+  const targetExamTitle = nearestExam
+    ? nearestExam.name
+    : 'CS301: Data Structures';
+  const targetExamSubtext = nearestExam?.topics?.[0]?.name || 'Trees, Graphs, & DP';
 
   const navItems = [
     {
@@ -157,8 +170,8 @@ export default function Sidebar({ mobileOpen, onClose }) {
                 {targetDaysLabel}
               </span>
             </div>
-            <p className="text-xs font-semibold text-white truncate">CS301: Data Structures</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Trees, Graphs, & DP</p>
+            <p className="text-xs font-semibold text-white truncate">{targetExamTitle}</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">{targetExamSubtext}</p>
 
             {/* Micro Progress bar */}
             <div className="w-full bg-slate-800 rounded-full h-1.5 my-2.5 overflow-hidden">
@@ -180,7 +193,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
 
           {/* User Status footer */}
           <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-500">
-            <span>Logged in: Monika S.</span>
+            <span>Logged in: {user?.name || 'Student'}</span>
             <span className="text-emerald-400 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               Online
