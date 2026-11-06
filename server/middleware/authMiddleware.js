@@ -26,7 +26,7 @@ export async function authMiddleware(req, res, next) {
         error: 'Server configuration error: JWT_SECRET missing.',
       });
     }
-    const effectiveSecret = secret || 'test_jwt_secret_studybuddy';
+    const effectiveSecret = secret || 'studybuddy_secret_jwt_fallback_key_2026';
 
     let decoded;
     try {
@@ -81,7 +81,7 @@ export async function authMiddleware(req, res, next) {
 }
 
 export function generateToken(payload, expiresIn = '7d') {
-  const secret = process.env.JWT_SECRET || (process.env.NODE_ENV === 'test' ? 'test_jwt_secret_studybuddy' : null);
+  const secret = process.env.JWT_SECRET || (process.env.NODE_ENV === 'test' ? 'studybuddy_secret_jwt_fallback_key_2026' : null);
   if (!secret) {
     throw new Error('JWT_SECRET is missing from environment.');
   }

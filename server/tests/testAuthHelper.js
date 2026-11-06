@@ -19,7 +19,7 @@ export async function createTestUser(overrides = {}) {
     streak: overrides.streak || 0,
   });
 
-  const secret = process.env.JWT_SECRET || 'test_jwt_secret_studybuddy_super_secure_key_12345';
+  const secret = process.env.JWT_SECRET || 'studybuddy_secret_jwt_fallback_key_2026';
   const token = jwt.sign(
     { userId: user._id.toString(), email: user.email },
     secret,

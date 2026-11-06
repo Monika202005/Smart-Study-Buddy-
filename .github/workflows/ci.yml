@@ -2,7 +2,7 @@ name: StudyBuddy CI
 
 on:
   push:
-    branches: [ main, dev, 'feature/**' ]
+    branches: [ main, dev, 'feature/**', 'monika-studybuddy-improvements' ]
   pull_request:
     branches: [ main, dev ]
 
@@ -12,6 +12,9 @@ jobs:
 
     env:
       NODE_OPTIONS: --experimental-vm-modules
+      NODE_ENV: test
+      JWT_SECRET: studybuddy_secret_jwt_fallback_key_2026
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
     steps:
     - uses: actions/checkout@v4
@@ -45,12 +48,10 @@ jobs:
 
     - name: Run Programmatic Chatbot Test Runner (21 Cases)
       run: |
-        node server/scripts/run-chat-tests.js
+        cd server && node scripts/run-chat-tests.js
 
     - name: Run Optional Live Gemini Integration Check
-      if: ${{ secrets.GEMINI_API_KEY != '' }}
+      if: env.GEMINI_API_KEY != ''
       continue-on-error: true
-      env:
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       run: |
         cd server && npm run test:llm
