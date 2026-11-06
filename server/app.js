@@ -39,9 +39,12 @@ if (process.env.NODE_ENV !== 'test') {
 
 // Root & Health check endpoint
 app.get('/api/health', (req, res) => {
+  const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY);
   res.json({
     status: 'online',
     app: 'StudyBuddy API',
+    aiMode: hasGeminiKey ? 'Gemini' : 'Offline tutor',
+    llmModel: process.env.LLM_MODEL || 'gemini-1.5-flash',
     database: getDBStatus(),
     modules: {
       member1_chatbot_quiz: 'ACTIVE',

@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AppShell from './components/layout/AppShell';
+import ProtectedRoute from './components/layout/ProtectedRoute';
 import DashboardPage from './pages/DashboardPage';
 import ChatPage from './pages/ChatPage';
 import FlashcardsPage from './pages/FlashcardsPage';
@@ -18,8 +19,15 @@ export default function App() {
         {/* Dedicated Auth Page */}
         <Route path="/login" element={<LoginPage />} />
 
-        {/* Main Application Shell */}
-        <Route path="/" element={<AppShell />}>
+        {/* Main Application Shell (Protected) */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <AppShell />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<DashboardPage />} />
           <Route path="chat" element={<ChatPage />} />
           <Route path="flashcards" element={<FlashcardsPage />} />

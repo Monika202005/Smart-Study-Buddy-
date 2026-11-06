@@ -74,6 +74,7 @@ export async function handleChatMessage(req, res) {
       toolCalls: result.toolCalls || [],
       messageId: assistantMsgObj._id,
       timestamp: assistantMsgObj.createdAt,
+      aiMode: Boolean(process.env.GEMINI_API_KEY) ? 'Gemini' : 'Offline tutor',
     });
   } catch (error) {
     console.error('Chat error:', error);
