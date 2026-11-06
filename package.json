@@ -14,7 +14,9 @@
     "test:client": "npm test --prefix client",
     "test:server": "npm test --prefix server",
     "test:chat": "node server/scripts/run-chat-tests.js",
-    "test": "npm run test:client && npm run test:server"
+    "test": "npm run test:client && npm run test:server",
+    "smoke": "cd server && node ../scripts/smoke.js",
+    "seed": "npm run seed --prefix server"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
