@@ -184,3 +184,4 @@ erDiagram
 
 1. **Zero Global Data Leaks**: Every Mongoose query in `plannerRepository.js`, `subjectController.js`, `taskController.js`, `sessionController.js`, and `analyticsController.js` includes `{ userId: req.user.userId }`.
 2. **Cascading Safety**: Deleting or updating documents verifies both the document `_id` and the matching `userId`. Attempts by User A to mutate User B's resources fail with 404 or 403.
+

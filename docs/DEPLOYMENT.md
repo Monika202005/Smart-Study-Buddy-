@@ -134,3 +134,4 @@ Expected output:
   ✅ AI Chatbot replied successfully (Tools: 1)
 🎉 ALL 6 PRODUCTION SMOKE TESTS PASSED CLEANLY!
 ```
+
