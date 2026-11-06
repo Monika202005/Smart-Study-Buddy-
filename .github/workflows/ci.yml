@@ -46,3 +46,9 @@ jobs:
     - name: Run Programmatic Chatbot Test Runner (21 Cases)
       run: |
         node server/scripts/run-chat-tests.js
+
+    - name: Run Optional Live Gemini Integration Check
+      if: env.GEMINI_API_KEY != ''
+      continue-on-error: true
+      run: |
+        cd server && npm run test:llm

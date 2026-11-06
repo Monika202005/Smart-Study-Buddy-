@@ -6,7 +6,7 @@ import SubjectModel from '../models/Subject.js';
 import TopicModel from '../models/Topic.js';
 import TaskModel from '../models/Task.js';
 import StudySessionModel from '../models/StudySession.js';
-import { calculateStreak, calculateCalendarDaysLeft } from '../services/analyticsService.js';
+import { calculateStreak, calculateCalendarDaysLeft, toDateString } from '../services/analyticsService.js';
 import { createTestUser } from './testAuthHelper.js';
 
 describe('Real Backend Multi-User Integration Tests', () => {
@@ -226,7 +226,7 @@ describe('Real Backend Multi-User Integration Tests', () => {
         .set('Authorization', userA.authHeader)
         .send({
           durationMin: 60,
-          date: new Date().toISOString().split('T')[0],
+          date: toDateString(new Date()),
           notes: 'User A Study Session',
         });
 
@@ -253,9 +253,8 @@ describe('Real Backend Multi-User Integration Tests', () => {
     it('calculates streak accurately based on consecutive days', () => {
       const today = new Date();
       const d = (offsetDays) => {
-        const dt = new Date(today);
-        dt.setDate(dt.getDate() - offsetDays);
-        return dt.toISOString().split('T')[0];
+        const dt = new Date(today.getFullYear(), today.getMonth(), today.getDate() - offsetDays);
+        return toDateString(dt);
       };
 
       // 3 consecutive days ending today
@@ -276,11 +275,11 @@ describe('Real Backend Multi-User Integration Tests', () => {
 
     it('calculates calendar days left without UTC drift', () => {
       const today = new Date();
-      const tomorrow = new Date(today.getTime() + 86400000).toISOString().split('T')[0];
-      expect(calculateCalendarDaysLeft(tomorrow)).toBe(1);
+      const tomorrow = toDateString(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1));
+      expect(calculateCalendarDaysLeft(tomorrow, today)).toBe(1);
 
-      const in5Days = new Date(today.getTime() + 5 * 86400000).toISOString().split('T')[0];
-      expect(calculateCalendarDaysLeft(in5Days)).toBe(5);
+      const in5Days = toDateString(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 5));
+      expect(calculateCalendarDaysLeft(in5Days, today)).toBe(5);
     });
   });
 
@@ -343,7 +342,7 @@ describe('Real Backend Multi-User Integration Tests', () => {
     });
 
     it('supports reschedule missed preview (commit: false) and commit (commit: true)', async () => {
-      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      const yesterday = toDateString(new Date(Date.now() - 86400000));
 
       // Insert an overdue task directly into DB
       await TaskModel.create({
@@ -378,7 +377,7 @@ describe('Real Backend Multi-User Integration Tests', () => {
       expect(commitRes.body.committed).toBe(true);
 
       const updatedCheck = await TaskModel.findOne({ userId: student.userId });
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = toDateString(new Date());
       expect(updatedCheck.scheduledDate).toBe(todayStr);
       expect(updatedCheck.isRescheduled).toBe(true);
     });

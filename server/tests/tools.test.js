@@ -1,6 +1,7 @@
 import { executeTool } from '../services/chatbotTools.js';
 import { validateToolArguments, validateISODate } from '../services/toolValidator.js';
 import { getTodayTasks, getMissedTasks, addTask, rescheduleOverdue } from '../services/plannerRepository.js';
+import { toDateString } from '../services/analyticsService.js';
 import FlashcardQuizModel from '../models/FlashcardQuiz.js';
 
 describe('Tool Validation & Execution (TASK 2 & TASK 3)', () => {
@@ -110,7 +111,7 @@ describe('Tool Validation & Execution (TASK 2 & TASK 3)', () => {
       // Add a task for userA
       await addTask(userA, {
         title: 'User A Special Task',
-        scheduledDate: new Date().toISOString().split('T')[0],
+        scheduledDate: toDateString(new Date()),
       });
 
       const planA = await executeTool('get_today_plan', {}, userA);
@@ -125,7 +126,7 @@ describe('Tool Validation & Execution (TASK 2 & TASK 3)', () => {
 
     it('executes reschedule_missed for user overdue tasks', async () => {
       const testUser = 'user_reschedule_test';
-      const yesterdayStr = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const yesterdayStr = toDateString(new Date(Date.now() - 24 * 60 * 60 * 1000));
 
       await addTask(testUser, {
         title: 'Overdue Task 1',

@@ -55,15 +55,23 @@ export function normalizeInput(str) {
 /**
  * Friendly fallback tutor response when the LLM is completely unavailable or times out after retries.
  */
-export function getFriendlyFallbackResponse(userMessage, plannerContext) {
+export function getFriendlyFallbackResponse(userMessage, plannerContext, errorReason = null) {
   const contextRaw = plannerContext?.raw || {};
   const upcoming = contextRaw.upcomingExams?.[0];
   const examInfo = upcoming
     ? `your **${upcoming.subject}** exam in **${upcoming.daysLeft} days** (${upcoming.examDate})`
     : 'your upcoming milestones';
 
+  const reasonStr = (errorReason || '').toString().toLowerCase();
+  const is429 = reasonStr.includes('429') || reasonStr.includes('rate limit') || reasonStr.includes('quota');
+
+  let notice = "I'm having a brief delay connecting to my primary AI core, but your planner is safely synchronized!";
+  if (is429) {
+    notice = "The AI study tutor is currently experiencing high demand (rate limit reached). Your study planner is safely synchronized, and I've switched to offline assistance mode!";
+  }
+
   return {
-    reply: `### 💡 StudyBuddy Tutor Note\n\nI'm having a brief delay connecting to my primary AI core, but your planner is safely synchronized!\n\nBased on your study plan, keep your focus on ${examInfo}. If you'd like to review a topic—like **AVL Tree rotations**, **B+ Trees**, or **Stack vs Queue**—ask away and we'll break it down together!`,
+    reply: `### 💡 StudyBuddy Tutor Note\n\n${notice}\n\nBased on your study plan, keep your focus on ${examInfo}. If you'd like to review a topic—like **AVL Tree rotations**, **B+ Trees**, or **Stack vs Queue**—ask away and we'll break it down together!`,
     toolCalls: [],
   };
 }
@@ -383,6 +391,10 @@ async function callGeminiWithTimeoutAndRetry(apiKey, payload) {
   // Exactly one retry for retryable failures
   console.warn('⚠️ Gemini call encountered a retryable condition; executing single retry...');
   try {
+    const is429 = (firstAttemptResponse && firstAttemptResponse.status === 429);
+    if (is429 && !customGeminiCaller) {
+      await new Promise((r) => setTimeout(r, 1000));
+    }
     const secondAttemptResponse = await executeOnce();
     if (secondAttemptResponse && (secondAttemptResponse.ok || secondAttemptResponse.candidates)) {
       return await parseResult(secondAttemptResponse);
@@ -546,7 +558,7 @@ ${trimmedMessage}
     } catch (llmErr) {
       console.warn('Gemini API call failed after timeout/retry policy:', llmErr.message);
       // Return friendly fallback tutor response on retry failure (never a 500)
-      return getFriendlyFallbackResponse(trimmedMessage, plannerContext);
+      return getFriendlyFallbackResponse(trimmedMessage, plannerContext, llmErr.message);
     }
   }
 
